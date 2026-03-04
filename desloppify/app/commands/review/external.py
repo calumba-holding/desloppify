@@ -25,6 +25,17 @@ from .importing.cmd import do_import, do_validate_import
 from .runner_packets import run_stamp, sha256_file, write_packet_snapshot
 from .runner_process import FollowupScanDeps, run_followup_scan
 from .runtime.setup import setup_lang_concrete
+from .prompt_sections import (
+    build_batch_context,
+    join_non_empty_sections,
+    render_historical_focus,
+    render_mechanical_concern_signals,
+    render_scan_evidence_note,
+    render_scope_enums,
+    render_scoring_frame,
+    render_seed_files_block,
+    render_task_requirements,
+)
 from .runtime_paths import (
     blind_packet_path as _blind_packet_path,
 )
@@ -181,6 +192,7 @@ def _build_template_payload(packet: dict[str, Any], *, session_id: str, token: s
             "token": token,
         },
         "assessments": {dim: 0 for dim in dimensions},
+        "dimension_notes": {},
         "issues": [],
     }
 
@@ -192,28 +204,92 @@ def _build_claude_launch_prompt(
     blind_path: Path,
     template_path: Path,
     output_path: Path,
+    packet: dict[str, Any],
 ) -> str:
     """Build a copy/paste-ready prompt for a Claude blind reviewer subagent."""
-    return "\n".join(
-        [
-            "# Claude Blind Reviewer Launch Prompt",
-            "",
-            "You are an isolated blind reviewer. Do not use prior chat context, prior score history, or target-score anchoring.",
-            "",
-            f"Blind packet: {blind_path}",
-            f"Template JSON: {template_path}",
-            f"Output JSON path: {output_path}",
-            "",
-            "Requirements:",
-            "1. Read ONLY the blind packet and repository code.",
-            "2. Start from the template JSON so `session.id` and `session.token` are preserved.",
-            f"3. Keep `session.id` exactly `{session_id}`.",
-            f"4. Keep `session.token` exactly `{token}`.",
-            "5. Output must be valid JSON with top-level keys: session, assessments, issues.",
-            "6. Every issue must include: dimension, identifier, summary, related_files, evidence, suggestion, confidence.",
-            "7. Do not include provenance metadata (CLI injects canonical provenance).",
-            "8. Return JSON only (no markdown fences).",
-        ]
+    header = (
+        "# Claude Blind Reviewer Launch Prompt\n\n"
+        "You are an isolated blind reviewer. Do not use prior chat context, "
+        "prior score history, or target-score anchoring.\n\n"
+        f"Session id: {session_id}\n"
+        f"Session token: {token}\n"
+        f"Blind packet: {blind_path}\n"
+        f"Template JSON: {template_path}\n"
+        f"Output JSON path: {output_path}\n\n"
+    )
+
+    batches = packet.get("investigation_batches", [])
+    if not isinstance(batches, list):
+        batches = []
+
+    all_dims: set[str] = set()
+    combined_cap = 0
+    batch_sections: list[str] = []
+    for i, batch in enumerate(batches):
+        if not isinstance(batch, dict):
+            continue
+        ctx = build_batch_context(batch, i)
+        all_dims.update(ctx.dimension_set)
+        combined_cap += ctx.issues_cap
+
+        section = (
+            f"--- Batch {i + 1}: {ctx.name} ---\n"
+            f"Dimensions: {ctx.dimensions_text}\n"
+            f"Rationale: {ctx.rationale}\n"
+        )
+        section += render_seed_files_block(ctx)
+        section += render_historical_focus(batch)
+        section += render_mechanical_concern_signals(batch)
+        batch_sections.append(section)
+
+    if not combined_cap:
+        combined_cap = 10
+
+    output_schema = (
+        "Output schema:\n"
+        "{\n"
+        '  "session": {"id": "<preserve from template>", "token": "<preserve from template>"},\n'
+        '  "assessments": {"<dimension>": <0-100 with one decimal place>},\n'
+        '  "dimension_notes": {\n'
+        '    "<dimension>": {\n'
+        '      "evidence": ["specific code observations"],\n'
+        '      "impact_scope": "local|module|subsystem|codebase",\n'
+        '      "fix_scope": "single_edit|multi_file_refactor|architectural_change",\n'
+        '      "confidence": "high|medium|low"\n'
+        "    }\n"
+        "  },\n"
+        '  "issues": [{\n'
+        '    "dimension": "<dimension>",\n'
+        '    "identifier": "short_id",\n'
+        '    "summary": "one-line defect summary",\n'
+        '    "related_files": ["relative/path.py"],\n'
+        '    "evidence": ["specific code observation"],\n'
+        '    "suggestion": "concrete fix recommendation",\n'
+        '    "confidence": "high|medium|low",\n'
+        '    "impact_scope": "local|module|subsystem|codebase",\n'
+        '    "fix_scope": "single_edit|multi_file_refactor|architectural_change",\n'
+        '    "root_cause_cluster": "optional_cluster_name"\n'
+        "  }]\n"
+        "}\n\n"
+    )
+
+    session_requirements = (
+        "Session requirements:\n"
+        f"1. Keep `session.id` exactly `{session_id}`.\n"
+        f"2. Keep `session.token` exactly `{token}`.\n"
+        "3. Do not include provenance metadata (CLI injects canonical provenance).\n"
+        "4. Return JSON only (no markdown fences).\n"
+    )
+
+    return join_non_empty_sections(
+        header,
+        render_scoring_frame(),
+        render_scan_evidence_note(),
+        *batch_sections,
+        render_task_requirements(issues_cap=combined_cap, dim_set=all_dims),
+        render_scope_enums(),
+        output_schema,
+        session_requirements,
     )
 
 
@@ -281,6 +357,7 @@ def do_external_start(args, state, lang, *, config: dict[str, Any] | None = None
             blind_path=blind_path,
             template_path=template_path,
             output_path=output_path,
+            packet=packet,
         )
         + "\n",
     )
