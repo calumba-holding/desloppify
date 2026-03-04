@@ -379,56 +379,77 @@ DETECTORS: dict[str, DetectorMeta] = {
     ),
 }
 
-_DISPLAY_ORDER = list(DISPLAY_ORDER)
-
-JUDGMENT_DETECTORS: frozenset[str] = frozenset(
-    name for name, meta in DETECTORS.items() if meta.needs_judgment
-)
 _BASE_DETECTORS: dict[str, DetectorMeta] = dict(DETECTORS)
-_BASE_DISPLAY_ORDER: list[str] = list(_DISPLAY_ORDER)
-_BASE_JUDGMENT_DETECTORS: frozenset[str] = frozenset(JUDGMENT_DETECTORS)
+_BASE_DISPLAY_ORDER: list[str] = list(DISPLAY_ORDER)
+_BASE_JUDGMENT_DETECTORS: frozenset[str] = frozenset(
+    name for name, meta in _BASE_DETECTORS.items() if meta.needs_judgment
+)
 
-_on_register_callbacks: list[Callable[[], None]] = []
+
+@dataclass
+class _RegistryRuntime:
+    detectors: dict[str, DetectorMeta]
+    display_order: list[str]
+    callbacks: list[Callable[[], None]]
+    judgment_detectors: frozenset[str]
+
+
+_RUNTIME = _RegistryRuntime(
+    detectors=DETECTORS,
+    display_order=list(DISPLAY_ORDER),
+    callbacks=[],
+    judgment_detectors=frozenset(
+        name for name, meta in DETECTORS.items() if meta.needs_judgment
+    ),
+)
+
+# Compatibility handles kept for existing imports/tests.
+DETECTORS = _RUNTIME.detectors
+_DISPLAY_ORDER = _RUNTIME.display_order
+_on_register_callbacks = _RUNTIME.callbacks
+JUDGMENT_DETECTORS: frozenset[str] = _RUNTIME.judgment_detectors
 
 
 def on_detector_registered(callback: Callable[[], None]) -> None:
     """Register a callback invoked after register_detector(). No-arg."""
-    _on_register_callbacks.append(callback)
+    _RUNTIME.callbacks.append(callback)
 
 
 def register_detector(meta: DetectorMeta) -> None:
     """Register a detector at runtime (used by generic plugins)."""
     global JUDGMENT_DETECTORS
-    DETECTORS[meta.name] = meta
-    if meta.name not in _DISPLAY_ORDER:
-        _DISPLAY_ORDER.append(meta.name)
-    JUDGMENT_DETECTORS = frozenset(
-        name for name, m in DETECTORS.items() if m.needs_judgment
+    _RUNTIME.detectors[meta.name] = meta
+    if meta.name not in _RUNTIME.display_order:
+        _RUNTIME.display_order.append(meta.name)
+    _RUNTIME.judgment_detectors = frozenset(
+        name for name, m in _RUNTIME.detectors.items() if m.needs_judgment
     )
-    for cb in _on_register_callbacks:
+    JUDGMENT_DETECTORS = _RUNTIME.judgment_detectors
+    for cb in tuple(_RUNTIME.callbacks):
         cb()
 
 
 def reset_registered_detectors() -> None:
     """Reset runtime-added detector registrations to built-in defaults."""
     global JUDGMENT_DETECTORS
-    DETECTORS.clear()
-    DETECTORS.update(_BASE_DETECTORS)
-    _DISPLAY_ORDER.clear()
-    _DISPLAY_ORDER.extend(_BASE_DISPLAY_ORDER)
-    JUDGMENT_DETECTORS = _BASE_JUDGMENT_DETECTORS
-    for cb in _on_register_callbacks:
+    _RUNTIME.detectors.clear()
+    _RUNTIME.detectors.update(_BASE_DETECTORS)
+    _RUNTIME.display_order.clear()
+    _RUNTIME.display_order.extend(_BASE_DISPLAY_ORDER)
+    _RUNTIME.judgment_detectors = _BASE_JUDGMENT_DETECTORS
+    JUDGMENT_DETECTORS = _RUNTIME.judgment_detectors
+    for cb in tuple(_RUNTIME.callbacks):
         cb()
 
 
 def detector_names() -> list[str]:
     """All registered detector names, sorted."""
-    return sorted(DETECTORS.keys())
+    return sorted(_RUNTIME.detectors.keys())
 
 
 def display_order() -> list[str]:
     """Canonical display order for terminal output."""
-    return list(_DISPLAY_ORDER)
+    return list(_RUNTIME.display_order)
 
 
 _ACTION_PRIORITY = {"auto_fix": 0, "reorganize": 1, "refactor": 2, "manual_fix": 3}
@@ -444,7 +465,7 @@ def dimension_action_type(dim_name: str) -> str:
     """Return a compact action type label for a dimension based on its detectors."""
     best = "manual"
     best_pri = 99
-    for d in DETECTORS.values():
+    for d in _RUNTIME.detectors.values():
         if d.dimension == dim_name:
             pri = _ACTION_PRIORITY.get(d.action_type, 99)
             if pri < best_pri:
@@ -456,7 +477,7 @@ def dimension_action_type(dim_name: str) -> str:
 def detector_tools() -> dict[str, dict]:
     """Build detector tool metadata keyed by detector name."""
     result = {}
-    for name, d in DETECTORS.items():
+    for name, d in _RUNTIME.detectors.items():
         entry: dict = {
             "fixers": list(d.fixers),
             "action_type": d.action_type,

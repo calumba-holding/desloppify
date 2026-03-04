@@ -6,9 +6,17 @@ import importlib
 import logging
 import sys
 from collections import defaultdict
+from dataclasses import dataclass
 
-_LANG_HOOKS: dict[str, dict[str, object]] = defaultdict(dict)
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _HookRegistryState:
+    hooks: dict[str, dict[str, object]]
+
+
+_STATE = _HookRegistryState(hooks=defaultdict(dict))
 
 
 def register_lang_hooks(
@@ -17,7 +25,7 @@ def register_lang_hooks(
     test_coverage: object | None = None,
 ) -> None:
     """Register optional detector hook modules for a language."""
-    hooks = _LANG_HOOKS[lang_name]
+    hooks = _STATE.hooks[lang_name]
     if test_coverage is not None:
         hooks["test_coverage"] = test_coverage
 
@@ -27,7 +35,7 @@ def get_lang_hook(lang_name: str | None, hook_name: str) -> object | None:
     if not lang_name:
         return None
 
-    hook = _LANG_HOOKS.get(lang_name, {}).get(hook_name)
+    hook = _STATE.hooks.get(lang_name, {}).get(hook_name)
     if hook is not None:
         return hook
 
@@ -43,7 +51,7 @@ def get_lang_hook(lang_name: str | None, hook_name: str) -> object | None:
                 "Unable to import language hook package %s: %s", lang_name, exc
             )
             return None
-    elif lang_name not in _LANG_HOOKS:
+    elif lang_name not in _STATE.hooks:
         try:
             importlib.reload(module)
         except (ImportError, ValueError, TypeError, RuntimeError, OSError) as exc:
@@ -52,12 +60,12 @@ def get_lang_hook(lang_name: str | None, hook_name: str) -> object | None:
             )
             return None
 
-    return _LANG_HOOKS.get(lang_name, {}).get(hook_name)
+    return _STATE.hooks.get(lang_name, {}).get(hook_name)
 
 
 def clear_lang_hooks_for_tests() -> None:
     """Clear registry (test helper)."""
-    _LANG_HOOKS.clear()
+    _STATE.hooks.clear()
 
 
 __all__ = [

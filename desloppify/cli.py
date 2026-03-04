@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from functools import lru_cache
 
 from desloppify.app.cli_support.parser import create_parser as _create_parser
 from desloppify.app.commands.helpers.lang import LangResolutionError, resolve_lang
@@ -21,19 +22,45 @@ from desloppify.base.runtime_state import runtime_scope
 from desloppify.languages import available_langs
 from desloppify.state import load_state
 
-_DETECTOR_NAMES_CACHE: dict[str, list[str]] = {}
 logger = logging.getLogger(__name__)
+
+
+class _DetectorNamesCacheCompat:
+    """Compat shim for tests that poke the legacy detector-name cache."""
+
+    def __init__(self) -> None:
+        self._store: dict[str, list[str]] = {}
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._store
+
+    def __getitem__(self, key: str) -> list[str]:
+        return self._store[key]
+
+    def __setitem__(self, key: str, value: list[str]) -> None:
+        self._store[key] = value
+
+    def pop(self, key: str, default=None):
+        return self._store.pop(key, default)
+
+
+_DETECTOR_NAMES_CACHE = _DetectorNamesCacheCompat()
+
+
+@lru_cache(maxsize=1)
+def _get_detector_names_cached() -> tuple[str, ...]:
+    """Compute detector names once until cache invalidation."""
+    return tuple(detector_names())
 
 
 def _get_detector_names() -> list[str]:
     """Return cached detector names, computing on first access."""
-    if "names" not in _DETECTOR_NAMES_CACHE:
-        _DETECTOR_NAMES_CACHE["names"] = detector_names()
-    return _DETECTOR_NAMES_CACHE["names"]
+    return list(_get_detector_names_cached())
 
 
 def _invalidate_detector_names_cache() -> None:
     """Invalidate detector-name cache when runtime registrations change."""
+    _get_detector_names_cached.cache_clear()
     _DETECTOR_NAMES_CACHE.pop("names", None)
 
 

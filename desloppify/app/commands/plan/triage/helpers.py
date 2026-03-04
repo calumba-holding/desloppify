@@ -19,12 +19,12 @@ from .services import TriageServices, default_triage_services
 _STAGE_ORDER = ["observe", "reflect", "organize"]
 
 
-def _has_triage_in_queue(plan: dict) -> bool:
+def has_triage_in_queue(plan: dict) -> bool:
     """Check if any triage stage ID is in the queue."""
     order = set(plan.get("queue_order", []))
     return bool(order & TRIAGE_IDS)
 
-def _inject_triage_stages(plan: dict) -> None:
+def inject_triage_stages(plan: dict) -> None:
     """Inject all 4 triage stage IDs into the queue (fresh start)."""
     order: list[str] = plan.setdefault("queue_order", [])
     existing = set(order)
@@ -40,12 +40,12 @@ def _inject_triage_stages(plan: dict) -> None:
         order.insert(insert_at, sid)
         insert_at += 1
 
-def _purge_triage_stage(plan: dict, stage_name: str) -> None:
+def purge_triage_stage(plan: dict, stage_name: str) -> None:
     """Purge a single triage stage ID from the queue."""
     sid = f"triage::{stage_name}"
     purge_ids(plan, [sid])
 
-def _cascade_clear_later_confirmations(stages: dict, from_stage: str) -> list[str]:
+def cascade_clear_later_confirmations(stages: dict, from_stage: str) -> list[str]:
     """Clear confirmed_at/confirmed_text on stages AFTER *from_stage*. Returns cleared names."""
     try:
         idx = _STAGE_ORDER.index(from_stage)
@@ -59,7 +59,7 @@ def _cascade_clear_later_confirmations(stages: dict, from_stage: str) -> list[st
             cleared.append(later)
     return cleared
 
-def _print_cascade_clear_feedback(cleared: list[str], stages: dict) -> None:
+def print_cascade_clear_feedback(cleared: list[str], stages: dict) -> None:
     """Print yellow cascade-clear message with next-step guidance."""
     if not cleared:
         return
@@ -74,7 +74,7 @@ def _print_cascade_clear_feedback(cleared: list[str], stages: dict) -> None:
             "dim",
         ))
 
-def _observe_dimension_breakdown(si) -> tuple[dict[str, int], list[str]]:
+def observe_dimension_breakdown(si) -> tuple[dict[str, int], list[str]]:
     """Count issues per dimension from a TriageInput. Returns (by_dim, sorted_dim_names)."""
     by_dim: dict[str, int] = defaultdict(int)
     for _fid, f in si.open_issues.items():
@@ -84,14 +84,14 @@ def _observe_dimension_breakdown(si) -> tuple[dict[str, int], list[str]]:
     dim_names = sorted(by_dim, key=lambda d: (-by_dim[d], d))
     return dict(by_dim), dim_names
 
-def _open_review_ids_from_state(state: dict) -> set[str]:
+def open_review_ids_from_state(state: dict) -> set[str]:
     """Return IDs of all open review/concerns issues in state."""
     return {
         fid for fid, f in state.get("issues", {}).items()
         if f.get("status") == "open" and f.get("detector") in ("review", "concerns")
     }
 
-def _triage_coverage(
+def triage_coverage(
     plan: dict,
     open_review_ids: set[str] | None = None,
 ) -> tuple[int, int, dict]:
@@ -114,14 +114,14 @@ def _triage_coverage(
     organized = sum(1 for fid in review_ids if fid in all_cluster_ids)
     return organized, len(review_ids), clusters
 
-def _manual_clusters_with_issues(plan: dict) -> list[str]:
+def manual_clusters_with_issues(plan: dict) -> list[str]:
     """Return names of non-auto clusters that have issues."""
     return [
         name for name, c in plan.get("clusters", {}).items()
         if c.get("issue_ids") and not c.get("auto")
     ]
 
-def _apply_completion(
+def apply_completion(
     args: argparse.Namespace,
     plan: dict,
     strategy: str,
@@ -133,8 +133,8 @@ def _apply_completion(
     runtime = resolved_services.command_runtime(args)
     state = runtime.state
 
-    organized, total, clusters = _triage_coverage(
-        plan, open_review_ids=_open_review_ids_from_state(state),
+    organized, total, clusters = triage_coverage(
+        plan, open_review_ids=open_review_ids_from_state(state),
     )
 
     # Purge all triage stage IDs.
@@ -144,11 +144,11 @@ def _apply_completion(
 
     meta = plan.setdefault("epic_triage_meta", {})
     meta["issue_snapshot_hash"] = current_hash
-    open_review_ids = sorted(
+    open_ids = sorted(
         fid for fid, f in state.get("issues", {}).items()
         if f.get("status") == "open" and f.get("detector") in ("review", "concerns")
     )
-    meta["triaged_ids"] = open_review_ids
+    meta["triaged_ids"] = open_ids
     if strategy.strip().lower() != "same":
         meta["strategy_summary"] = strategy
     meta["trigger"] = "manual_triage"
@@ -174,14 +174,14 @@ def _apply_completion(
         print(colorize(f"  Strategy: {effective_strategy}", "cyan"))
     print(colorize("  Run `desloppify next` to start implementation.", "green"))
 
-def _find_cluster_for(fid: str, clusters: dict) -> str | None:
+def find_cluster_for(fid: str, clusters: dict) -> str | None:
     """Return the cluster name containing *fid*, or None."""
     for name, c in clusters.items():
         if fid in c.get("issue_ids", []):
             return name
     return None
 
-def _count_log_activity_since(plan: dict, since: str) -> dict[str, int]:
+def count_log_activity_since(plan: dict, since: str) -> dict[str, int]:
     """Count execution log entries by action since *since* timestamp."""
     counts: dict[str, int] = defaultdict(int)
     for entry in plan.get("execution_log", []):
@@ -189,38 +189,17 @@ def _count_log_activity_since(plan: dict, since: str) -> dict[str, int]:
             counts[entry.get("action", "unknown")] += 1
     return dict(counts)
 
-
-def has_triage_in_queue(plan: dict) -> bool:
-    """Public alias for triage queue-presence checks."""
-    return _has_triage_in_queue(plan)
-
-
-def inject_triage_stages(plan: dict) -> None:
-    """Public alias for triage stage injection."""
-    _inject_triage_stages(plan)
-
-
-def triage_coverage(
-    plan: dict,
-    open_review_ids: set[str] | None = None,
-) -> tuple[int, int, dict]:
-    """Public alias for triage coverage computation."""
-    return _triage_coverage(plan, open_review_ids=open_review_ids)
-
 __all__ = [
-    "_apply_completion",
-    "_cascade_clear_later_confirmations",
-    "_count_log_activity_since",
-    "_find_cluster_for",
-    "_has_triage_in_queue",
-    "_inject_triage_stages",
-    "_manual_clusters_with_issues",
-    "_observe_dimension_breakdown",
-    "_open_review_ids_from_state",
-    "_print_cascade_clear_feedback",
-    "_purge_triage_stage",
-    "_triage_coverage",
+    "apply_completion",
+    "cascade_clear_later_confirmations",
+    "count_log_activity_since",
+    "find_cluster_for",
     "has_triage_in_queue",
     "inject_triage_stages",
+    "manual_clusters_with_issues",
+    "observe_dimension_breakdown",
+    "open_review_ids_from_state",
+    "print_cascade_clear_feedback",
+    "purge_triage_stage",
     "triage_coverage",
 ]

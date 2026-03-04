@@ -6,7 +6,7 @@ import logging
 import os
 import re
 
-from ._import_cache import _read_go_module_path
+from ._import_cache import read_go_module_path
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def resolve_go_import(import_text: str, source_file: str, scan_path: str) -> str
 
     # Read go.mod to get module path.
     go_mod = os.path.join(scan_path, "go.mod")
-    module_path = _read_go_module_path(go_mod, logger=logger)
+    module_path = read_go_module_path(go_mod)
     if not module_path:
         return None
 

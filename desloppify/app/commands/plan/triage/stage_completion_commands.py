@@ -8,11 +8,11 @@ from desloppify.base.output.terminal import colorize
 from desloppify.base.output.user_message import print_user_message
 
 from .helpers import (
-    _apply_completion,
-    _has_triage_in_queue,
-    _manual_clusters_with_issues,
-    _open_review_ids_from_state,
-    _triage_coverage,
+    apply_completion,
+    has_triage_in_queue,
+    manual_clusters_with_issues,
+    open_review_ids_from_state,
+    triage_coverage,
 )
 from .services import TriageServices, default_triage_services
 from ._stage_records import _record_confirm_existing_completion
@@ -44,7 +44,7 @@ def _cmd_triage_complete(
     attestation: str | None = getattr(args, "attestation", None)
     plan = resolved_services.load_plan()
 
-    if not _has_triage_in_queue(plan):
+    if not has_triage_in_queue(plan):
         print(colorize("  No planning stages in the queue — nothing to complete.", "yellow"))
         return
 
@@ -52,7 +52,7 @@ def _cmd_triage_complete(
     stages = meta.get("triage_stages", {})
 
     state = resolved_services.command_runtime(args).state
-    review_ids = _open_review_ids_from_state(state)
+    review_ids = open_review_ids_from_state(state)
 
     # Require organize stage confirmed
     if not _require_organize_stage_for_complete(
@@ -76,7 +76,7 @@ def _cmd_triage_complete(
         return
 
     # Verify cluster coverage
-    organized, total, _clusters = _triage_coverage(plan, open_review_ids=review_ids)
+    organized, total, _clusters = triage_coverage(plan, open_review_ids=review_ids)
 
     if total > 0 and organized == 0:
         print(colorize("  Cannot complete: no issues have been organized into clusters.", "red"))
@@ -101,7 +101,7 @@ def _cmd_triage_complete(
     # Show summary
     _print_complete_summary(plan, stages)
 
-    organized, total, _ = _triage_coverage(plan, open_review_ids=review_ids)
+    organized, total, _ = triage_coverage(plan, open_review_ids=review_ids)
 
     # Jump-back guidance before committing
     print()
@@ -123,7 +123,7 @@ def _cmd_triage_complete(
         },
     )
 
-    _apply_completion(args, plan, strategy, services=resolved_services)
+    apply_completion(args, plan, strategy, services=resolved_services)
 
     print_user_message(
         "Hey — triage is done. Run `desloppify next` and start"
@@ -144,7 +144,7 @@ def _cmd_confirm_existing(
     confirmed: str | None = getattr(args, "confirmed", None)
     plan = resolved_services.load_plan()
 
-    if not _has_triage_in_queue(plan):
+    if not has_triage_in_queue(plan):
         print(colorize("  No planning stages in the queue — nothing to confirm.", "yellow"))
         return
 
@@ -169,7 +169,7 @@ def _cmd_confirm_existing(
         return
 
     # Require existing enriched clusters
-    clusters_with_issues = _manual_clusters_with_issues(plan)
+    clusters_with_issues = manual_clusters_with_issues(plan)
     if not clusters_with_issues:
         print(colorize("  Cannot confirm existing: no clusters with issues exist.", "red"))
         print(colorize("  Use the full organize flow instead.", "dim"))
@@ -221,7 +221,7 @@ def _cmd_confirm_existing(
         detail={"confirmed_text": confirmed_text},
     )
 
-    _apply_completion(args, plan, strategy, services=resolved_services)
+    apply_completion(args, plan, strategy, services=resolved_services)
     print(colorize("  Confirmed existing plan — triage complete.", "green"))
 
 

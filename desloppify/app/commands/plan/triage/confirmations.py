@@ -8,13 +8,13 @@ from desloppify.base.output.terminal import colorize
 from desloppify.base.output.user_message import print_user_message
 from desloppify.state import utc_now
 
-from .display import _show_plan_summary
+from .display import show_plan_summary
 from .helpers import (
-    _count_log_activity_since,
-    _observe_dimension_breakdown,
-    _open_review_ids_from_state,
-    _purge_triage_stage,
-    _triage_coverage,
+    count_log_activity_since,
+    observe_dimension_breakdown,
+    open_review_ids_from_state,
+    purge_triage_stage,
+    triage_coverage,
 )
 from .services import TriageServices, default_triage_services
 
@@ -87,7 +87,7 @@ def _confirm_observe(
     print(colorize("  " + "─" * 54, "dim"))
 
     # Dimension breakdown
-    by_dim, dim_names = _observe_dimension_breakdown(si)
+    by_dim, dim_names = observe_dimension_breakdown(si)
 
     issue_count = obs.get("issue_count", len(si.open_issues))
     print(f"  Your analysis covered {issue_count} issues across {len(by_dim)} dimensions:")
@@ -118,7 +118,7 @@ def _confirm_observe(
     # Record confirmation
     stages["observe"]["confirmed_at"] = utc_now()
     stages["observe"]["confirmed_text"] = attestation.strip()
-    _purge_triage_stage(plan, "observe")
+    purge_triage_stage(plan, "observe")
     resolved_services.save_plan(plan)
     resolved_services.append_log_entry(
         plan,
@@ -186,7 +186,7 @@ def _confirm_reflect(
         print(colorize("  └" + "─" * 51 + "┘", "cyan"))
 
     # Collect data references for validation — include observe-stage dimensions
-    _by_dim, observe_dims = _observe_dimension_breakdown(si)
+    _by_dim, observe_dims = observe_dimension_breakdown(si)
     reflect_dims = sorted(set((list(recurring.keys()) if recurring else []) + observe_dims))
     reflect_clusters = [n for n in plan.get("clusters", {}) if not plan["clusters"][n].get("auto")]
 
@@ -212,7 +212,7 @@ def _confirm_reflect(
 
     stages["reflect"]["confirmed_at"] = utc_now()
     stages["reflect"]["confirmed_text"] = attestation.strip()
-    _purge_triage_stage(plan, "reflect")
+    purge_triage_stage(plan, "reflect")
     resolved_services.save_plan(plan)
     resolved_services.append_log_entry(
         plan,
@@ -256,7 +256,7 @@ def _confirm_organize(
     # Activity since reflect
     reflect_ts = stages.get("reflect", {}).get("timestamp", "")
     if reflect_ts:
-        activity = _count_log_activity_since(plan, reflect_ts)
+        activity = count_log_activity_since(plan, reflect_ts)
         if activity:
             print("  Since reflect, you have:")
             for action, count in sorted(activity.items()):
@@ -266,7 +266,7 @@ def _confirm_organize(
 
     # Show full plan
     print(colorize("\n  Plan:", "bold"))
-    _show_plan_summary(plan, state)
+    show_plan_summary(plan, state)
 
     organize_clusters = [n for n in plan.get("clusters", {}) if not plan["clusters"][n].get("auto")]
 
@@ -289,12 +289,12 @@ def _confirm_organize(
         print(colorize(f"\n  {validation_err}", "red"))
         return
 
-    organized, total, _ = _triage_coverage(
-        plan, open_review_ids=_open_review_ids_from_state(state),
+    organized, total, _ = triage_coverage(
+        plan, open_review_ids=open_review_ids_from_state(state),
     )
     stages["organize"]["confirmed_at"] = utc_now()
     stages["organize"]["confirmed_text"] = attestation.strip()
-    _purge_triage_stage(plan, "organize")
+    purge_triage_stage(plan, "organize")
     resolved_services.save_plan(plan)
     resolved_services.append_log_entry(
         plan,

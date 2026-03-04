@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import ItemsView
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -23,9 +24,18 @@ __all__ = [
     "get_load_errors",
 ]
 
-_registry: dict[str, LangConfig] = {}  # type: ignore[type-arg]  # runtime uses Any
-_flags: dict[str, bool] = {"load_attempted": False}
-_load_errors: dict[str, BaseException] = {}
+@dataclass
+class _RegistryState:
+    registry: dict[str, LangConfig]  # type: ignore[type-arg]  # runtime uses Any
+    load_attempted: bool
+    load_errors: dict[str, BaseException]
+
+
+_STATE = _RegistryState(
+    registry={},
+    load_attempted=False,
+    load_errors={},
+)
 
 
 # ── Public API ────────────────────────────────────────────
@@ -33,62 +43,62 @@ _load_errors: dict[str, BaseException] = {}
 
 def register(name: str, cfg: LangConfig) -> None:
     """Register a language config by name."""
-    _registry[name] = cfg
+    _STATE.registry[name] = cfg
 
 
 def get(name: str) -> LangConfig | None:
     """Get a language config by name, or None."""
-    return _registry.get(name)
+    return _STATE.registry.get(name)
 
 
 def all_items() -> ItemsView[str, LangConfig]:
     """Return all (name, config) pairs."""
-    return _registry.items()
+    return _STATE.registry.items()
 
 
 def all_keys() -> list[str]:
     """Return all registered language names."""
-    return list(_registry.keys())
+    return list(_STATE.registry.keys())
 
 
 def is_registered(name: str) -> bool:
     """Check if a language is registered."""
-    return name in _registry
+    return name in _STATE.registry
 
 
 def remove(name: str) -> None:
     """Remove a language by name (for testing)."""
-    _registry.pop(name, None)
+    _STATE.registry.pop(name, None)
 
 
 def clear() -> None:
     """Full reset: registrations, load-attempted flag, and load errors."""
-    _registry.clear()
-    _flags["load_attempted"] = False
-    _load_errors.clear()
+    _STATE.registry.clear()
+    _STATE.load_attempted = False
+    _STATE.load_errors.clear()
 
 
 def set_load_attempted(value: bool) -> None:
     """Set the load-attempted flag."""
-    _flags["load_attempted"] = value
+    _STATE.load_attempted = value
 
 
 def was_load_attempted() -> bool:
     """Check whether plugin loading has been attempted."""
-    return _flags["load_attempted"]
+    return _STATE.load_attempted
 
 
 def record_load_error(name: str, error: BaseException) -> None:
     """Record an import error for a language module."""
-    _load_errors[name] = error
+    _STATE.load_errors[name] = error
 
 
 def set_load_errors(errors: dict[str, BaseException]) -> None:
     """Replace the full load-errors dict (used by discovery)."""
-    _load_errors.clear()
-    _load_errors.update(errors)
+    _STATE.load_errors.clear()
+    _STATE.load_errors.update(errors)
 
 
 def get_load_errors() -> dict[str, BaseException]:
     """Return a copy of the load-errors dict."""
-    return dict(_load_errors)
+    return dict(_STATE.load_errors)

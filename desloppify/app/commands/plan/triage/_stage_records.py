@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from desloppify.state import utc_now
 
-from .helpers import _cascade_clear_later_confirmations
+from .helpers import cascade_clear_later_confirmations
 
 
 def _resolve_reusable_report(
@@ -37,7 +37,7 @@ def _record_observe_stage(
     if is_reuse and existing_stage and existing_stage.get("confirmed_at"):
         stages["observe"]["confirmed_at"] = existing_stage["confirmed_at"]
         stages["observe"]["confirmed_text"] = existing_stage.get("confirmed_text", "")
-    cleared = _cascade_clear_later_confirmations(stages, "observe")
+    cleared = cascade_clear_later_confirmations(stages, "observe")
     if not is_reuse:
         stages["observe"].pop("confirmed_at", None)
         stages["observe"].pop("confirmed_text", None)
@@ -62,7 +62,7 @@ def _record_organize_stage(
     if is_reuse and existing_stage and existing_stage.get("confirmed_at"):
         stages["organize"]["confirmed_at"] = existing_stage["confirmed_at"]
         stages["organize"]["confirmed_text"] = existing_stage.get("confirmed_text", "")
-    return _cascade_clear_later_confirmations(stages, "organize")
+    return cascade_clear_later_confirmations(stages, "organize")
 
 
 def _record_confirm_existing_completion(

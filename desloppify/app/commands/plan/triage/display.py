@@ -23,17 +23,17 @@ from desloppify.base.output.terminal import colorize
 from desloppify.base.output.user_message import print_user_message
 
 from .helpers import (
-    _find_cluster_for,
-    _manual_clusters_with_issues,
-    _open_review_ids_from_state,
-    _print_cascade_clear_feedback,
-    _triage_coverage,
+    find_cluster_for,
+    manual_clusters_with_issues,
+    open_review_ids_from_state,
+    print_cascade_clear_feedback,
+    triage_coverage,
 )
 from .services import TriageServices, default_triage_services
 from .stage_helpers import _unenriched_clusters
 
 
-def _print_stage_progress(stages: dict, plan: dict | None = None) -> None:
+def print_stage_progress(stages: dict, plan: dict | None = None) -> None:
     """Print the 4-stage progress indicator."""
     print(colorize("  Stages:", "dim"))
     for stage_name, label in TRIAGE_STAGE_LABELS:
@@ -50,7 +50,7 @@ def _print_stage_progress(stages: dict, plan: dict | None = None) -> None:
     # Show enrichment gaps when in the organize stage
     if plan and "reflect" in stages and "organize" not in stages:
         gaps = _unenriched_clusters(plan)
-        manual = _manual_clusters_with_issues(plan)
+        manual = manual_clusters_with_issues(plan)
         if not manual:
             print(colorize("\n    No manual clusters yet. Create clusters and enrich them.", "yellow"))
         elif gaps:
@@ -64,7 +64,7 @@ def _print_stage_progress(stages: dict, plan: dict | None = None) -> None:
         else:
             print(colorize(f"\n    All {len(manual)} manual cluster(s) enriched.", "green"))
 
-def _print_progress(plan: dict, open_issues: dict) -> None:
+def print_progress(plan: dict, open_issues: dict) -> None:
     """Show cluster state and unclustered issues."""
     clusters = plan.get("clusters", {})
     # Only show clusters that actually have issues (hide empty/stale ones)
@@ -109,10 +109,10 @@ def _print_progress(plan: dict, open_issues: dict) -> None:
         if len(unclustered) > 10:
             print(colorize(f"    ... and {len(unclustered) - 10} more", "dim"))
     elif open_issues:
-        organized, total, _ = _triage_coverage(plan, open_review_ids=set(open_issues.keys()))
+        organized, total, _ = triage_coverage(plan, open_review_ids=set(open_issues.keys()))
         print(colorize(f"\n  All {organized}/{total} issues are in clusters.", "green"))
 
-def _print_reflect_result(
+def print_reflect_result(
     *,
     issue_count: int,
     recurring_dims: list[str],
@@ -131,7 +131,7 @@ def _print_reflect_result(
     if is_reuse:
         print(colorize("  Reflect data preserved (no changes).", "dim"))
         if cleared:
-            _print_cascade_clear_feedback(cleared, stages)
+            print_cascade_clear_feedback(cleared, stages)
     else:
         print(colorize("  Now confirm your strategy.", "yellow"))
         print(colorize("    desloppify plan triage --confirm reflect", "dim"))
@@ -159,7 +159,7 @@ def _print_reflect_result(
         " input unless I've asked you to."
     )
 
-def _print_organize_result(
+def print_organize_result(
     *,
     manual_clusters: list[str],
     plan: dict,
@@ -176,7 +176,7 @@ def _print_organize_result(
     if is_reuse:
         print(colorize("  Organize data preserved (no changes).", "dim"))
         if cleared:
-            _print_cascade_clear_feedback(cleared, stages)
+            print_cascade_clear_feedback(cleared, stages)
     else:
         print(colorize("  Now confirm the plan.", "yellow"))
         print(colorize("    desloppify plan triage --confirm organize", "dim"))
@@ -204,7 +204,7 @@ def _print_organize_result(
         " I've asked you to."
     )
 
-def _print_reflect_dashboard(
+def print_reflect_dashboard(
     si: object,
     plan: dict,
     *,
@@ -261,7 +261,7 @@ def _print_reflect_dashboard(
         print(colorize("  - Which issues will you cluster together vs defer?", "dim"))
         print(colorize("  - What's the overall arc of work and why?", "dim"))
 
-def _cmd_triage_dashboard(
+def cmd_triage_dashboard(
     args: argparse.Namespace,
     *,
     services: TriageServices | None = None,
@@ -297,7 +297,7 @@ def _cmd_triage_dashboard(
 
     # Stage progress (with enrichment gaps)
     print()
-    _print_stage_progress(stages, plan)
+    print_stage_progress(stages, plan)
     if meta.get("stage_refresh_required"):
         print(
             colorize(
@@ -332,7 +332,7 @@ def _cmd_triage_dashboard(
         print(colorize("    (Contradictions, recurring patterns, which direction to take, what to defer)", "dim"))
     elif "organize" not in stages:
         gaps = _unenriched_clusters(plan)
-        manual = _manual_clusters_with_issues(plan)
+        manual = manual_clusters_with_issues(plan)
 
         if not manual:
             print(colorize("  Next steps:", "yellow"))
@@ -410,12 +410,12 @@ def _cmd_triage_dashboard(
 
     # Show reflect dashboard when observe done, reflect not done
     if "observe" in stages and "reflect" not in stages:
-        _print_reflect_dashboard(si, plan, services=resolved_services)
+        print_reflect_dashboard(si, plan, services=resolved_services)
 
     # Show current cluster progress
-    _print_progress(plan, si.open_issues)
+    print_progress(plan, si.open_issues)
 
-def _show_plan_summary(plan: dict, state: dict) -> None:
+def show_plan_summary(plan: dict, state: dict) -> None:
     """Print a compact plan rendering: clusters + queue order + coverage."""
     clusters = plan.get("clusters", {})
     active = {
@@ -443,31 +443,21 @@ def _show_plan_summary(plan: dict, state: dict) -> None:
             f = issues.get(fid, {})
             summary = (f.get("summary") or fid)[:60]
             detector = f.get("detector", "?")
-            cn = _find_cluster_for(fid, active)
+            cn = find_cluster_for(fid, active)
             print(f"    {i+1}. [{detector}] {summary}{f' ({cn})' if cn else ''}")
 
-    organized, total, _ = _triage_coverage(
-        plan, open_review_ids=_open_review_ids_from_state(state),
+    organized, total, _ = triage_coverage(
+        plan, open_review_ids=open_review_ids_from_state(state),
     )
     pct = int(organized / total * 100) if total else 0
     print(colorize(f"\n  Coverage: {organized}/{total} in clusters ({pct}%)", "bold"))
 
-
-def cmd_triage_dashboard(
-    args: argparse.Namespace,
-    *,
-    services: TriageServices | None = None,
-) -> None:
-    """Public entrypoint for triage dashboard rendering."""
-    _cmd_triage_dashboard(args, services=services)
-
 __all__ = [
     "cmd_triage_dashboard",
-    "_cmd_triage_dashboard",
-    "_print_organize_result",
-    "_print_progress",
-    "_print_reflect_dashboard",
-    "_print_reflect_result",
-    "_print_stage_progress",
-    "_show_plan_summary",
+    "print_organize_result",
+    "print_progress",
+    "print_reflect_dashboard",
+    "print_reflect_result",
+    "print_stage_progress",
+    "show_plan_summary",
 ]

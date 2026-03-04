@@ -6,7 +6,7 @@ import desloppify.app.commands.helpers.guardrails as guardrails_mod
 import desloppify.app.commands.plan.triage.organize as plan_organize_mod
 import desloppify.app.commands.plan.triage.progress_render as plan_progress_render_mod
 import desloppify.app.commands.plan.triage.reflect as plan_reflect_mod
-import desloppify.app.commands.plan.triage._stage_flow_commands as triage_flow_mod
+import desloppify.app.commands.plan.triage.stage_flow_commands as triage_flow_mod
 import desloppify.app.commands.plan.triage_handlers as triage_handlers_mod
 import desloppify.app.commands.review.batch.merge as batch_merge_mod
 import desloppify.app.commands.review.batch.scope as batches_scope_mod

@@ -5,7 +5,7 @@ from __future__ import annotations
 from desloppify.app.commands.helpers.display import short_issue_id
 from desloppify.base.output.terminal import colorize
 
-from .helpers import _manual_clusters_with_issues
+from .helpers import manual_clusters_with_issues
 
 
 def _print_observe_report_requirement() -> None:
@@ -38,7 +38,7 @@ def _print_complete_summary(plan: dict, stages: dict) -> None:
             print(colorize("    Reflect: no recurring patterns", "dim"))
     if "organize" not in stages:
         return
-    manual = _manual_clusters_with_issues(plan)
+    manual = manual_clusters_with_issues(plan)
     print(colorize(f"    Organize: {len(manual)} enriched cluster(s)", "dim"))
     for name in manual:
         cluster = plan.get("clusters", {}).get(name, {})

@@ -14,14 +14,14 @@ from desloppify.languages._framework.discovery import load_all, raise_load_error
 
 
 def test_raise_load_errors_includes_module_name_and_exception_type(monkeypatch):
-    monkeypatch.setattr(registry_state, "_load_errors", {".dummy": ImportError("boom")})
+    monkeypatch.setattr(registry_state._STATE, "load_errors", {".dummy": ImportError("boom")})
 
     with pytest.raises(ImportError, match=r"\.dummy: ImportError: boom"):
         raise_load_errors()
 
 
 def test_raise_load_errors_noop_when_no_errors(monkeypatch):
-    monkeypatch.setattr(registry_state, "_load_errors", {})
+    monkeypatch.setattr(registry_state._STATE, "load_errors", {})
     raise_load_errors()
     assert registry_state.get_load_errors() == {}
 

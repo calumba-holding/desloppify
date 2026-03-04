@@ -16,8 +16,8 @@ from desloppify.engine.plan import (
 from desloppify.state import utc_now
 
 from .confirmations import _MIN_ATTESTATION_LEN, _validate_attestation
-from .display import _show_plan_summary
-from .helpers import _manual_clusters_with_issues, _observe_dimension_breakdown
+from .display import show_plan_summary
+from .helpers import manual_clusters_with_issues, observe_dimension_breakdown
 from .stage_helpers import _unenriched_clusters
 from ._stage_rendering import _print_new_issues_since_last
 
@@ -36,7 +36,7 @@ def _auto_confirm_observe_if_attested(
         print(colorize("  Run: desloppify plan triage --confirm observe", "dim"))
         print(colorize("  Or pass --attestation to auto-confirm observe inline.", "dim"))
         return False
-    _by_dim, dim_names = _observe_dimension_breakdown(triage_input)
+    _by_dim, dim_names = observe_dimension_breakdown(triage_input)
     validation_err = _validate_attestation(
         attestation.strip(),
         "observe",
@@ -116,7 +116,7 @@ def _auto_confirm_reflect_for_organize(
         triage_input.open_issues,
         triage_input.resolved_issues,
     )
-    _by_dim, observe_dims = _observe_dimension_breakdown(triage_input)
+    _by_dim, observe_dims = observe_dimension_breakdown(triage_input)
     reflect_dims = sorted(set((list(recurring.keys()) if recurring else []) + observe_dims))
     reflect_clusters = [
         name for name in plan.get("clusters", {}) if not plan["clusters"][name].get("auto")
@@ -138,7 +138,7 @@ def _auto_confirm_reflect_for_organize(
 
 
 def _manual_clusters_or_error(plan: dict) -> list[str] | None:
-    manual_clusters = _manual_clusters_with_issues(plan)
+    manual_clusters = manual_clusters_with_issues(plan)
     if manual_clusters:
         return manual_clusters
     any_clusters = [
@@ -221,7 +221,7 @@ def _require_organize_stage_for_complete(
         )
         print(colorize(f"  Then: {TRIAGE_CMD_ORGANIZE}", "dim"))
     else:
-        manual = _manual_clusters_with_issues(plan)
+        manual = manual_clusters_with_issues(plan)
         if manual:
             print(colorize("  Clusters are enriched. Record the organize stage first:", "dim"))
             print(colorize(f"    {TRIAGE_CMD_ORGANIZE}", "dim"))
@@ -271,7 +271,7 @@ def _auto_confirm_organize_for_complete(
 
 
 def _completion_clusters_valid(plan: dict) -> bool:
-    manual_clusters = _manual_clusters_with_issues(plan)
+    manual_clusters = manual_clusters_with_issues(plan)
     if not manual_clusters:
         any_clusters = [
             name
@@ -410,7 +410,7 @@ def _confirmed_text_or_error(
     if confirmed and len(confirmed.strip()) >= _MIN_ATTESTATION_LEN:
         return confirmed.strip()
     print(colorize("  Current plan:", "bold"))
-    _show_plan_summary(plan, state)
+    show_plan_summary(plan, state)
     if confirmed:
         print(
             colorize(

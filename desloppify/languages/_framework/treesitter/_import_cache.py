@@ -3,28 +3,19 @@
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 
 from desloppify.base.output.fallbacks import log_best_effort_failure
 
-_go_modules: dict[str, str] = {}
-
-
 def reset_import_cache() -> None:
     """Reset cached resolver state used by import helpers."""
-    _go_modules.clear()
+    read_go_module_path.cache_clear()
 
 
-def _read_go_module_path(
-    go_mod_path: str,
-    *,
-    logger: logging.Logger | None = None,
-) -> str:
-    """Read module path from go.mod with caching."""
-    if logger is None:
-        logger = logging.getLogger(__name__)
-    if go_mod_path in _go_modules:
-        return _go_modules[go_mod_path]
-
+@lru_cache(maxsize=512)
+def read_go_module_path(go_mod_path: str) -> str:
+    """Read module path from go.mod with memoization by absolute path."""
+    logger = logging.getLogger(__name__)
     module_path = ""
     try:
         with open(go_mod_path) as f:
@@ -35,9 +26,7 @@ def _read_go_module_path(
                     break
     except OSError as exc:
         log_best_effort_failure(logger, f"read go.mod at {go_mod_path}", exc)
-
-    _go_modules[go_mod_path] = module_path
     return module_path
 
 
-__all__ = ["_read_go_module_path", "reset_import_cache"]
+__all__ = ["read_go_module_path", "reset_import_cache"]

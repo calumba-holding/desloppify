@@ -8,12 +8,12 @@ from desloppify.base.output.terminal import colorize
 from desloppify.base.output.user_message import print_user_message
 from desloppify.state import utc_now
 
-from .display import _print_organize_result, _print_reflect_result
+from .display import print_organize_result, print_reflect_result
 from .helpers import (
-    _cascade_clear_later_confirmations,
-    _has_triage_in_queue,
-    _inject_triage_stages,
-    _print_cascade_clear_feedback,
+    cascade_clear_later_confirmations,
+    has_triage_in_queue,
+    inject_triage_stages,
+    print_cascade_clear_feedback,
 )
 from ._stage_records import (
     _record_observe_stage,
@@ -54,8 +54,8 @@ def _cmd_stage_observe(
     plan = resolved_services.load_plan()
 
     # Auto-start: inject triage stage IDs if not present
-    if not _has_triage_in_queue(plan):
-        _inject_triage_stages(plan)
+    if not has_triage_in_queue(plan):
+        inject_triage_stages(plan)
         meta = plan.setdefault("epic_triage_meta", {})
         meta["triage_stages"] = {}
         resolved_services.save_plan(plan)
@@ -89,7 +89,7 @@ def _cmd_stage_observe(
         if is_reuse:
             print(colorize("  Observe data preserved (no changes).", "dim"))
             if cleared:
-                _print_cascade_clear_feedback(cleared, stages)
+                print_cascade_clear_feedback(cleared, stages)
         return
 
     # Validation: report length (no citation counting)
@@ -131,7 +131,7 @@ def _cmd_stage_observe(
     if is_reuse:
         print(colorize("  Observe data preserved (no changes).", "dim"))
         if cleared:
-            _print_cascade_clear_feedback(cleared, stages)
+            print_cascade_clear_feedback(cleared, stages)
     else:
         print(colorize("  Now confirm your analysis.", "yellow"))
         print(colorize("    desloppify plan triage --confirm observe", "dim"))
@@ -168,7 +168,7 @@ def _cmd_stage_reflect(
     state = runtime.state
     plan = resolved_services.load_plan()
 
-    if not _has_triage_in_queue(plan):
+    if not has_triage_in_queue(plan):
         print(colorize("  No planning stages in the queue — nothing to reflect on.", "yellow"))
         return
 
@@ -233,31 +233,32 @@ def _cmd_stage_reflect(
         "cited_ids": [],
         "timestamp": utc_now(),
         "issue_count": issue_count,
-        "recurring_dims": recurring_dims,
     }
+    reflect_stage["recurring_dims"] = recurring_dims
     stages["reflect"] = reflect_stage
 
     # Jump-back: preserve or clear confirmation
     if is_reuse and existing_stage and existing_stage.get("confirmed_at"):
         stages["reflect"]["confirmed_at"] = existing_stage["confirmed_at"]
         stages["reflect"]["confirmed_text"] = existing_stage.get("confirmed_text", "")
-    cleared = _cascade_clear_later_confirmations(stages, "reflect")
+    cleared = cascade_clear_later_confirmations(stages, "reflect")
 
     resolved_services.save_plan(plan)
 
+    reflect_detail = {
+        "issue_count": issue_count,
+        "reuse": is_reuse,
+    }
+    reflect_detail["recurring_dims"] = recurring_dims
     resolved_services.append_log_entry(
         plan,
         "triage_reflect",
         actor="user",
-        detail={
-            "issue_count": issue_count,
-            "recurring_dims": recurring_dims,
-            "reuse": is_reuse,
-        },
+        detail=reflect_detail,
     )
     resolved_services.save_plan(plan)
 
-    _print_reflect_result(
+    print_reflect_result(
         issue_count=issue_count,
         recurring_dims=recurring_dims,
         recurring=recurring,
@@ -286,7 +287,7 @@ def _cmd_stage_organize(
     resolved_services = services or default_triage_services()
     plan = resolved_services.load_plan()
 
-    if not _has_triage_in_queue(plan):
+    if not has_triage_in_queue(plan):
         print(colorize("  No planning stages in the queue — nothing to organize.", "yellow"))
         return
 
@@ -344,7 +345,7 @@ def _cmd_stage_organize(
     )
     resolved_services.save_plan(plan)
 
-    _print_organize_result(
+    print_organize_result(
         manual_clusters=manual_clusters,
         plan=plan,
         report=report,

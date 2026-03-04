@@ -3,20 +3,16 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from desloppify.languages._framework.treesitter import TreeSitterLangSpec
 
-# Pre-compiled once at module level, populated lazily.
-_LOG_RE_CACHE: dict[tuple[str, ...], list[re.Pattern]] = {}
-
-
-def _get_log_patterns(patterns: tuple[str, ...]) -> list[re.Pattern]:
-    """Get compiled log patterns, caching by the frozen tuple key."""
-    if patterns not in _LOG_RE_CACHE:
-        _LOG_RE_CACHE[patterns] = [re.compile(p) for p in patterns]
-    return _LOG_RE_CACHE[patterns]
+@lru_cache(maxsize=256)
+def _get_log_patterns(patterns: tuple[str, ...]) -> tuple[re.Pattern[str], ...]:
+    """Compile log patterns once per unique frozen pattern tuple."""
+    return tuple(re.compile(p) for p in patterns)
 
 
 def _collect_comment_ranges(node, comment_types: frozenset[str]) -> list[tuple[int, int]]:
