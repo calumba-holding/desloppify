@@ -7,7 +7,6 @@ from desloppify.app.commands.scan.workflow import (
     ScanRuntime,
     ScanStateContractError,
     _augment_with_stale_wontfix_issues,
-    _expire_provisional_manual_override_assessments,
     _reset_subjective_assessments_for_scan_reset,
 )
 
@@ -160,54 +159,6 @@ def test_scan_reset_seeds_subjective_dimensions_when_missing():
     assert assessments["low_level_elegance"]["reset_by"] == "scan_reset_subjective"
     assert assessments["low_level_elegance"]["placeholder"] is True
 
-
-def test_expire_provisional_manual_override_assessments_resets_scores():
-    state = {
-        "subjective_assessments": {
-            "naming_quality": {
-                "score": 98.0,
-                "source": "manual_override",
-                "provisional_override": True,
-                "provisional_until_scan": 4,
-                "components": ["foo"],
-                "component_scores": {"foo": 98.0},
-            },
-            "logic_clarity": {
-                "score": 80.0,
-                "source": "holistic",
-            },
-        }
-    }
-
-    expired = _expire_provisional_manual_override_assessments(state)
-
-    assert expired == 1
-    naming = state["subjective_assessments"]["naming_quality"]
-    assert naming["score"] == 0.0
-    assert naming["source"] == "manual_override_expired"
-    assert naming["reset_by"] == "manual_override_expired"
-    assert naming["placeholder"] is True
-    assert "provisional_override" not in naming
-    assert "provisional_until_scan" not in naming
-    assert "components" not in naming
-    assert "component_scores" not in naming
-    assert state["subjective_assessments"]["logic_clarity"]["score"] == 80.0
-
-
-def test_expire_provisional_manual_override_assessments_noop_when_absent():
-    state = {
-        "subjective_assessments": {
-            "naming_quality": {
-                "score": 88.0,
-                "source": "holistic",
-            }
-        }
-    }
-
-    expired = _expire_provisional_manual_override_assessments(state)
-
-    assert expired == 0
-    assert state["subjective_assessments"]["naming_quality"]["score"] == 88.0
 
 
 def test_scan_reset_raises_when_subjective_assessments_not_object():

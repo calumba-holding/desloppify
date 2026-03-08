@@ -50,7 +50,6 @@ def test_prepare_scan_runtime_uses_real_runtime_and_resets_subjective(tmp_path):
     assert scan_runtime.profile == "full"
     assert scan_runtime.effective_include_slow is True
     assert scan_runtime.zone_overrides == {"src/foo.py": "test"}
-    assert scan_runtime.expired_manual_override_count == 1
     assert scan_runtime.reset_subjective_count >= 10
     naming = scan_runtime.state["subjective_assessments"]["naming_quality"]
     assert naming["score"] == 0.0

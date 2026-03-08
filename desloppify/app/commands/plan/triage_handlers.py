@@ -74,6 +74,8 @@ def _cmd_triage_start(
             resolved_services.save_plan(plan)
             print(colorize("  Stages cleared. Begin with observe:", "green"))
         else:
+            _helpers_mod.inject_triage_stages(plan)
+            resolved_services.save_plan(plan)
             print(colorize("  Begin with observe:", "green"))
         print(colorize(f"    {TRIAGE_CMD_OBSERVE}", "dim"))
         return

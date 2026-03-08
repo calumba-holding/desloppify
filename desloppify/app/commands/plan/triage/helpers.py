@@ -25,9 +25,20 @@ def has_triage_in_queue(plan: dict) -> bool:
     order = set(plan.get("queue_order", []))
     return bool(order & TRIAGE_IDS)
 
+
+def _clear_triage_stage_skips(plan: dict) -> None:
+    """Remove triage stage IDs from ``plan['skipped']``."""
+    skipped = plan.get("skipped")
+    if not isinstance(skipped, dict):
+        return
+    for sid in TRIAGE_STAGE_IDS:
+        skipped.pop(sid, None)
+
+
 def inject_triage_stages(plan: dict) -> None:
     """Inject all triage stage IDs into the queue (fresh start)."""
     order: list[str] = plan.setdefault("queue_order", [])
+    _clear_triage_stage_skips(plan)
     remaining = [issue_id for issue_id in order if issue_id not in TRIAGE_IDS]
     order[:] = [*TRIAGE_STAGE_IDS, *remaining]
 
@@ -162,7 +173,7 @@ def apply_completion(
     *,
     services: TriageServices | None = None,
 ) -> None:
-    """Shared completion logic: update meta, remove triage::pending, save."""
+    """Shared completion logic: update meta, remove triage stage IDs, save."""
     resolved_services = services or default_triage_services()
     runtime = resolved_services.command_runtime(args)
     state = runtime.state

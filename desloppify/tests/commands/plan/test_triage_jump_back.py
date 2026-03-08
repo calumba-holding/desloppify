@@ -6,7 +6,7 @@ import argparse
 
 import desloppify.app.commands.plan.triage_handlers as triage_mod
 from desloppify.engine._plan.schema import empty_plan
-from desloppify.engine._plan.stale_dimensions import TRIAGE_STAGE_IDS
+from desloppify.engine._plan.constants import TRIAGE_STAGE_IDS
 
 # ---------------------------------------------------------------------------
 # Helpers

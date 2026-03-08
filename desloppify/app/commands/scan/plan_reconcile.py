@@ -225,8 +225,20 @@ def _sync_auto_clusters_and_log(
 def _sync_triage_and_log(
     plan: dict[str, object],
     state: state_mod.StateModel,
+    *,
+    policy=None,
 ) -> bool:
-    triage_sync = sync_triage_needed(plan, state)
+    triage_sync = sync_triage_needed(plan, state, policy=policy)
+    if triage_sync.deferred:
+        meta = plan.get("epic_triage_meta", {})
+        if meta.get("triage_recommended"):
+            print(
+                colorize(
+                    "  Plan: review issues changed — triage recommended after current work.",
+                    "dim",
+                )
+            )
+        return False
     if not triage_sync.changes:
         return False
     if triage_sync.injected:
@@ -335,7 +347,7 @@ def reconcile_plan_post_scan(runtime: Any) -> None:
         dirty = True
     if _sync_create_plan_and_log(plan, runtime.state, policy=policy):
         dirty = True
-    if _sync_triage_and_log(plan, runtime.state):
+    if _sync_triage_and_log(plan, runtime.state, policy=policy):
         dirty = True
     if _sync_plan_start_scores_and_log(plan, runtime.state):
         dirty = True

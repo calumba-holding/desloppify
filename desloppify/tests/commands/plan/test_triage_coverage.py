@@ -7,7 +7,7 @@ from desloppify.app.commands.plan.triage.stage_helpers import (
     triage_coverage as stage_helper_triage_coverage,
 )
 from desloppify.engine._plan.schema import empty_plan
-from desloppify.engine._plan.stale_dimensions import TRIAGE_STAGE_IDS
+from desloppify.engine._plan.constants import TRIAGE_STAGE_IDS
 
 
 def _plan_with_queue(*issue_ids: str, clustered: list[str] | None = None) -> dict:

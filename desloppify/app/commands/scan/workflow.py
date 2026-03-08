@@ -141,7 +141,6 @@ class ScanRuntime:
     effective_include_slow: bool
     zone_overrides: dict[str, object] | None
     reset_subjective_count: int = 0
-    expired_manual_override_count: int = 0
     coverage_warnings: list[DetectorCoverageRecord] = field(default_factory=list)
 
 
@@ -251,35 +250,6 @@ def _reset_subjective_assessments_for_scan_reset(
     return len(reset_keys)
 
 
-def _expire_provisional_manual_override_assessments(
-    state: state_mod.StateModel,
-) -> int:
-    """Expire provisional manual-override assessments at scan start."""
-    assessments = _state_subjective_assessments(state)
-
-    now = state_mod.utc_now()
-    source = "manual_override_expired"
-    expired = 0
-    for payload in assessments.values():
-        if not isinstance(payload, dict):
-            continue
-        if payload.get("provisional_override") is not True:
-            continue
-        _apply_assessment_reset(payload, source=source, now=now)
-        expired += 1
-    return expired
-
-
-def _is_mid_cycle(args: argparse.Namespace) -> bool:
-    """Return True when a plan cycle is in progress (plan_start_scores populated)."""
-    from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
-    from desloppify.engine.plan import load_plan
-
-    try:
-        plan = load_plan()
-        return bool(plan.get("plan_start_scores"))
-    except PLAN_LOAD_EXCEPTIONS:
-        return False
 
 
 def prepare_scan_runtime(args: argparse.Namespace) -> ScanRuntime:
@@ -292,11 +262,6 @@ def prepare_scan_runtime(args: argparse.Namespace) -> ScanRuntime:
     config = runtime.config if isinstance(runtime.config, dict) else {}
     lang_config = resolve_lang(args)
     reset_subjective_count = 0
-    expired_manual_override_count = 0
-    if not _is_mid_cycle(args):
-        expired_manual_override_count = _expire_provisional_manual_override_assessments(
-            state
-        )
     if getattr(args, "reset_subjective", False):
         reset_subjective_count = _reset_subjective_assessments_for_scan_reset(
             state,
@@ -324,7 +289,6 @@ def prepare_scan_runtime(args: argparse.Namespace) -> ScanRuntime:
         effective_include_slow=include_slow_effective,
         zone_overrides=zone_overrides,
         reset_subjective_count=reset_subjective_count,
-        expired_manual_override_count=expired_manual_override_count,
         coverage_warnings=coverage_warnings,
     )
 

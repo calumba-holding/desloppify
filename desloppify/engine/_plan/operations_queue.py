@@ -102,7 +102,7 @@ def move_items(
     ensure_plan_defaults(plan)
 
     # Triage stage IDs are workflow-managed and cannot be manually reordered
-    from desloppify.engine._plan.stale_dimensions import TRIAGE_IDS
+    from desloppify.engine._plan.constants import TRIAGE_IDS
 
     issue_ids = [fid for fid in issue_ids if fid not in TRIAGE_IDS]
     if not issue_ids:

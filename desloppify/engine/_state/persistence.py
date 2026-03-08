@@ -18,7 +18,6 @@ from desloppify.base.discovery.file_paths import safe_write_text
 from desloppify.base.text_utils import is_numeric
 from desloppify.engine._state.schema import (
     CURRENT_VERSION,
-    STATE_FILE,
     StateModel,
     empty_state,
     ensure_state_defaults,
@@ -29,7 +28,8 @@ from desloppify.engine._state.schema import (
 
 logger = logging.getLogger(__name__)
 
-_INITIAL_STATE_FILE = STATE_FILE
+_STATE_FILE_SENTINEL = object()
+STATE_FILE = _STATE_FILE_SENTINEL
 
 
 from desloppify.engine._state import _recompute_stats
@@ -40,7 +40,7 @@ def _default_state_file() -> Path:
 
     If tests monkeypatch ``STATE_FILE`` in this module, use that override.
     """
-    if STATE_FILE != _INITIAL_STATE_FILE:
+    if STATE_FILE is not _STATE_FILE_SENTINEL:
         return Path(STATE_FILE)
     return get_state_file()
 

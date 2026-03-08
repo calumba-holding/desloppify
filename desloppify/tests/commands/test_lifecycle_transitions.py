@@ -19,7 +19,7 @@ import desloppify.app.commands.scan.plan_reconcile as reconcile_mod
 from desloppify.base.subjective_dimensions import DISPLAY_NAMES
 from desloppify.engine._plan.operations_lifecycle import purge_ids
 from desloppify.engine._plan.schema import empty_plan
-from desloppify.engine._plan.stale_dimensions import (
+from desloppify.engine._plan.constants import (
     TRIAGE_STAGE_IDS,
     WORKFLOW_COMMUNICATE_SCORE_ID,
     WORKFLOW_CREATE_PLAN_ID,
@@ -80,7 +80,7 @@ def _build_state(
     objective_score: float | None = None,
 ) -> dict:
     state: dict = {
-        "issues": {i["id"]: i for i in issues},
+        "issues": {i["id"]: dict(i) for i in issues},
         "scan_count": 1,
         "dimension_scores": {},
         "subjective_assessments": {},
@@ -213,7 +213,7 @@ class TestScanAfterReviewsInjectsWorkflow:
 class TestTriageInjectedOnScan:
 
     def test_triage_after_review_issues_on_scan(self, monkeypatch):
-        """Scan with new review issues triggers triage stage injection."""
+        """Scan with new review issues injects triage, but objectives stay unblocked."""
         state = _build_state(OBJECTIVE_ISSUES, [_placeholder_dim_entries(k) for k in DIM_KEYS])
         plan = _reconcile(state, empty_plan(), monkeypatch)
 
@@ -227,15 +227,18 @@ class TestTriageInjectedOnScan:
         plan = _reconcile(state, plan, monkeypatch)
 
         ids = _queue_ids(state, plan)
-        triage_ids = [fid for fid in ids if fid.startswith("triage::")]
-        assert len(triage_ids) == len(TRIAGE_STAGE_IDS)
+        assert not any(fid.startswith("triage::") for fid in ids), ids
+        assert "obj-1" in ids and "obj-2" in ids
 
-        # Triage comes before objective issues
-        obj_ids = [fid for fid in ids if fid.startswith("obj-")]
-        if obj_ids:
-            last_triage = max(ids.index(fid) for fid in triage_ids)
-            first_obj = ids.index(obj_ids[0])
-            assert last_triage < first_obj
+        # Triage stages are still injected in plan order.
+        assert all(sid in plan["queue_order"] for sid in TRIAGE_STAGE_IDS)
+
+        # Once objective queue drains, triage becomes visible.
+        state["issues"]["obj-1"]["status"] = "fixed"
+        state["issues"]["obj-2"]["status"] = "fixed"
+        ids = _queue_ids(state, plan)
+        triage_ids = [fid for fid in ids if fid.startswith("triage::")]
+        assert len(triage_ids) == len(TRIAGE_STAGE_IDS), ids
 
 
 # ---------------------------------------------------------------------------
@@ -277,21 +280,30 @@ class TestFullLifecycleGoldenPath:
         assert "obj-1" in ids and "obj-2" in ids, f"Post-workflow: {ids}"
         assert not any(fid.startswith("workflow::") for fid in ids), f"Post-workflow: {ids}"
 
-        # ── Scan 3: add review issues → triage ──
+        # ── Scan 3: add review issues → triage deferred mid-cycle ──
         _add_review_issues(state)
         plan = _reconcile(state, plan, monkeypatch)
         ids = _queue_ids(state, plan)
+        # Mid-cycle guard: triage NOT injected while objective work remains
+        assert not any(fid.startswith("triage::") for fid in ids), f"Scan 3: {ids}"
+        assert not any(sid in plan["queue_order"] for sid in TRIAGE_STAGE_IDS), (
+            f"Triage should be deferred mid-cycle: {plan['queue_order']}"
+        )
+        assert plan["epic_triage_meta"].get("triage_recommended"), "triage_recommended flag expected"
+        assert "obj-1" in ids and "obj-2" in ids, f"Scan 3: {ids}"
+
+        # ── Complete objective queue → rescan injects triage ──
+        state["issues"]["obj-1"]["status"] = "fixed"
+        state["issues"]["obj-2"]["status"] = "fixed"
+        plan = _reconcile(state, plan, monkeypatch)
+        ids = _queue_ids(state, plan)
         triage_ids = [fid for fid in ids if fid.startswith("triage::")]
-        assert len(triage_ids) == len(TRIAGE_STAGE_IDS), f"Scan 3: {ids}"
+        assert len(triage_ids) == len(TRIAGE_STAGE_IDS), f"Triage unlock: {ids}"
+        assert not plan["epic_triage_meta"].get("triage_recommended"), (
+            "triage_recommended should be cleared after injection"
+        )
 
-        # Synthetic items before objectives
-        synthetic = [fid for fid in ids if fid.startswith(("workflow::", "triage::"))]
-        obj_in_queue = [fid for fid in ids if fid.startswith("obj-")]
-        if synthetic and obj_in_queue:
-            assert max(ids.index(s) for s in synthetic) < ids.index(obj_in_queue[0])
-
-        # ── Between scans: complete triage ──
+        # ── Complete triage ──
         purge_ids(plan, list(TRIAGE_STAGE_IDS))
         ids = _queue_ids(state, plan)
         assert not any(fid.startswith("triage::") for fid in ids), f"Post-triage: {ids}"
-        assert "obj-1" in ids, f"Post-triage: {ids}"

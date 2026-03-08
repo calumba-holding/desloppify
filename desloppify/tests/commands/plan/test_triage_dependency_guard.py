@@ -7,7 +7,7 @@ import argparse
 import desloppify.app.commands.plan.override_handlers as override_mod
 from desloppify.app.commands.plan.override_handlers import _blocked_triage_stages
 from desloppify.engine._plan.schema import empty_plan
-from desloppify.engine._plan.stale_dimensions import TRIAGE_STAGE_IDS
+from desloppify.engine._plan.constants import TRIAGE_STAGE_IDS
 
 
 def _plan_with_triage_stages(*confirmed_stages: str) -> dict:

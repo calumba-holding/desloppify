@@ -57,6 +57,7 @@ def triage_guardrail_messages(
     state: dict | None = None,
 ) -> list[str]:
     """Return warning strings without printing."""
+    resolved_state = state or {}
     result = triage_guardrail_status(plan=plan, state=state)
     if not result.is_stale:
         return []
@@ -69,7 +70,7 @@ def triage_guardrail_messages(
         )
 
     if result._plan is not None:
-        banner = triage_phase_banner(result._plan)
+        banner = triage_phase_banner(result._plan, resolved_state)
         if banner:
             messages.append(banner)
 

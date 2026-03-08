@@ -7,7 +7,7 @@ from desloppify.engine._work_queue.types import WorkQueueItem
 
 def build_score_checkpoint_item(plan: dict, state: dict) -> WorkQueueItem | None:
     """Build a synthetic work item for ``workflow::score-checkpoint`` if queued."""
-    from desloppify.engine._plan.stale_dimensions import WORKFLOW_SCORE_CHECKPOINT_ID
+    from desloppify.engine._plan.constants import WORKFLOW_SCORE_CHECKPOINT_ID
 
     if WORKFLOW_SCORE_CHECKPOINT_ID not in plan.get("queue_order", []):
         return None
@@ -44,7 +44,7 @@ def build_score_checkpoint_item(plan: dict, state: dict) -> WorkQueueItem | None
 
 def build_create_plan_item(plan: dict) -> WorkQueueItem | None:
     """Build a synthetic work item for ``workflow::create-plan`` if queued."""
-    from desloppify.engine._plan.stale_dimensions import WORKFLOW_CREATE_PLAN_ID
+    from desloppify.engine._plan.constants import WORKFLOW_CREATE_PLAN_ID
 
     if WORKFLOW_CREATE_PLAN_ID not in plan.get("queue_order", []):
         return None
@@ -69,7 +69,7 @@ def build_create_plan_item(plan: dict) -> WorkQueueItem | None:
 
 def build_import_scores_item(plan: dict, state: dict) -> WorkQueueItem | None:
     """Build a synthetic work item for ``workflow::import-scores`` if queued."""
-    from desloppify.engine._plan.stale_dimensions import WORKFLOW_IMPORT_SCORES_ID
+    from desloppify.engine._plan.constants import WORKFLOW_IMPORT_SCORES_ID
 
     if WORKFLOW_IMPORT_SCORES_ID not in plan.get("queue_order", []):
         return None
@@ -100,7 +100,7 @@ def build_import_scores_item(plan: dict, state: dict) -> WorkQueueItem | None:
 
 def build_communicate_score_item(plan: dict, state: dict) -> WorkQueueItem | None:
     """Build a synthetic work item for ``workflow::communicate-score`` if queued."""
-    from desloppify.engine._plan.stale_dimensions import WORKFLOW_COMMUNICATE_SCORE_ID
+    from desloppify.engine._plan.constants import WORKFLOW_COMMUNICATE_SCORE_ID
 
     if WORKFLOW_COMMUNICATE_SCORE_ID not in plan.get("queue_order", []):
         return None

@@ -136,7 +136,6 @@ from desloppify.engine._plan.schema import (
 # --- constants --------------------------------------------------------------
 from desloppify.engine._plan.constants import (
     SYNTHETIC_PREFIXES,
-    TRIAGE_ID,
     TRIAGE_IDS,
     TRIAGE_PREFIX,
     TRIAGE_STAGE_IDS,
@@ -174,19 +173,39 @@ from desloppify.engine._plan.stale_policy import (
 )
 
 # --- subjective policy ------------------------------------------------------
-from desloppify.engine._plan.subjective_policy import (
-    compute_subjective_visibility,
+from desloppify.engine._plan._sync_context import (
+    has_objective_backlog as _has_objective_backlog,
 )
+from desloppify.engine._plan.subjective_policy import compute_subjective_visibility
 
 
-def triage_phase_banner(plan: PlanModel) -> str:
-    """Return a banner string when triage stage IDs are in the queue."""
+def triage_phase_banner(plan: PlanModel, state: dict | None = None) -> str:
+    """Return a banner string describing triage status.
+
+    Handles three states:
+    - Triage stages in queue + objective work → TRIAGE PENDING
+    - Triage stages in queue + no objective work → TRIAGE MODE (active)
+    - No triage stages but ``triage_recommended`` set → soft recommendation
+    """
     ensure_plan_defaults(plan)
     order = set(plan.get("queue_order", []))
     has_triage = any(sid in order for sid in TRIAGE_IDS)
-    if not has_triage:
-        return ""
     meta = plan.get("epic_triage_meta", {})
+
+    if not has_triage:
+        # No stages in queue — check for deferred recommendation
+        if meta.get("triage_recommended"):
+            return (
+                "TRIAGE RECOMMENDED — review issues changed since last triage. "
+                "Run: desloppify plan triage"
+            )
+        return ""
+
+    if state and _has_objective_backlog(state, None):
+        return (
+            "TRIAGE PENDING — queued and will activate after objective work "
+            "is complete."
+        )
     stages = meta.get("triage_stages", {})
     completed = [s for s in ("observe", "reflect", "organize", "enrich", "sense-check") if s in stages]
     if completed:
@@ -274,7 +293,6 @@ __all__ = [
     "AUTO_PREFIX",
     "auto_cluster_issues",
     # constants + sync
-    "TRIAGE_ID",
     "TRIAGE_IDS",
     "TRIAGE_PREFIX",
     "TRIAGE_STAGE_IDS",

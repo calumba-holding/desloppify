@@ -312,7 +312,7 @@ def _add_triage_subparser(plan_sub) -> None:
     )
     p_triage.add_argument(
         "--start", action="store_true", default=False,
-        help="Manually start triage (inject triage::pending, clear prior stages)",
+        help="Manually start triage (inject triage stages, clear prior stages)",
     )
     p_triage.add_argument(
         "--confirm",

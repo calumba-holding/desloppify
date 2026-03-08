@@ -23,7 +23,6 @@ from desloppify.engine._plan.schema import (
     validate_plan,
 )
 from desloppify.engine._state.schema import (
-    STATE_DIR,
     get_state_dir,
     json_default,
     utc_now,
@@ -31,8 +30,9 @@ from desloppify.engine._state.schema import (
 
 logger = logging.getLogger(__name__)
 
-PLAN_FILE = STATE_DIR / "plan.json"
-_INITIAL_PLAN_FILE = PLAN_FILE
+_PLAN_FILE_SENTINEL = object()
+PLAN_FILE = _PLAN_FILE_SENTINEL
+_INITIAL_PLAN_FILE = _PLAN_FILE_SENTINEL
 
 
 def get_plan_file() -> Path:

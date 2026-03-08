@@ -18,10 +18,10 @@ from desloppify.engine._plan.schema import (
     ensure_plan_defaults,
     triage_clusters,
 )
-from desloppify.engine._plan.stale_dimensions import (
-    TRIAGE_STAGE_IDS,
+from desloppify.engine._plan.constants import TRIAGE_STAGE_IDS
+from desloppify.engine._plan.stale_policy import review_issue_snapshot_hash
+from desloppify.engine._plan.sync_triage import (
     is_triage_stale,
-    review_issue_snapshot_hash,
     sync_triage_needed,
 )
 from desloppify.engine._work_queue.synthetic import build_triage_stage_items
@@ -180,13 +180,13 @@ class TestSyncTriageNeeded:
         result = sync_triage_needed(plan, state)
         assert result.injected
 
-    def test_injects_at_front(self):
+    def test_injects_at_back(self):
         plan = empty_plan()
         plan["queue_order"] = ["existing_item"]
         state = _state_with_review_issues("r1")
         sync_triage_needed(plan, state)
-        assert plan["queue_order"][0] == "triage::observe"
-        assert plan["queue_order"][-1] == "existing_item"
+        assert plan["queue_order"][0] == "existing_item"
+        assert plan["queue_order"][1] == "triage::observe"
 
     def test_skips_confirmed_stages(self):
         """Stages already confirmed in meta are not injected."""
@@ -200,6 +200,27 @@ class TestSyncTriageNeeded:
         assert "triage::reflect" in plan["queue_order"]
         assert "triage::organize" in plan["queue_order"]
         assert "triage::commit" in plan["queue_order"]
+
+    def test_injection_clears_skipped_overlap_for_new_stages(self):
+        """Injected triage stages are removed from skipped to keep plan valid."""
+        plan = empty_plan()
+        plan["epic_triage_meta"] = {
+            "triage_stages": {"observe": {"report": "analysis..."}},
+        }
+        plan["skipped"] = {
+            "triage::reflect": {"kind": "temporary"},
+            "triage::sense-check": {"kind": "temporary"},
+            "review::x.py::id1": {"kind": "temporary"},
+        }
+        state = _state_with_review_issues("r1")
+
+        result = sync_triage_needed(plan, state)
+
+        assert "triage::reflect" in result.injected
+        assert "triage::sense-check" in result.injected
+        assert "triage::reflect" not in plan["skipped"]
+        assert "triage::sense-check" not in plan["skipped"]
+        assert "review::x.py::id1" in plan["skipped"]
 
     def test_preserves_when_stages_in_progress_no_issues(self):
         """Triage stages preserved even if all review issues vanish mid-triage."""
@@ -304,8 +325,11 @@ class TestIsTriageStale:
         }
         assert not is_triage_stale(plan, state)
 
-    def test_stale_when_stages_present_with_in_progress_work(self):
-        """Stages in queue ARE stale when user has started triage work."""
+    def test_not_stale_when_triage_in_progress(self):
+        """In-progress triage (stages in queue + confirmed work) is NOT stale.
+
+        The lifecycle filter already forces triage stages to the front.
+        """
         state = _state_with_review_issues("r1")
         plan = empty_plan()
         plan["queue_order"] = list(TRIAGE_STAGE_IDS)
@@ -313,7 +337,7 @@ class TestIsTriageStale:
             "triaged_ids": ["r1"],
             "triage_stages": {"observe": {"report": "analysis"}},
         }
-        assert is_triage_stale(plan, state)
+        assert not is_triage_stale(plan, state)
 
     def test_not_stale_when_only_resolutions(self):
         """Resolving triaged issues should not trigger staleness."""

@@ -100,7 +100,7 @@ def build_triage_stage_items(plan: dict, state: dict) -> list[WorkQueueItem]:
         TRIAGE_STAGE_DEPENDENCIES,
         TRIAGE_STAGE_LABELS,
     )
-    from desloppify.engine._plan.stale_dimensions import (
+    from desloppify.engine._plan.constants import (
         TRIAGE_IDS,
         TRIAGE_STAGE_IDS,
     )

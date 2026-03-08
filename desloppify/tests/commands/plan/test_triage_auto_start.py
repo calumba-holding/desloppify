@@ -7,7 +7,7 @@ import argparse
 import desloppify.app.commands.plan.triage_handlers as triage_mod
 from desloppify.app.commands.plan.triage import helpers as triage_helpers
 from desloppify.engine._plan.schema import empty_plan
-from desloppify.engine._plan.stale_dimensions import TRIAGE_IDS, TRIAGE_STAGE_IDS
+from desloppify.engine._plan.constants import TRIAGE_IDS, TRIAGE_STAGE_IDS
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -152,3 +152,20 @@ class TestAutoStartTriage:
             "review::a.py::x1",
             "review::b.py::x2",
         ]
+
+    def test_inject_triage_stages_clears_skipped_entries(self):
+        """Inject helper removes triage stage IDs from skipped."""
+        plan = {
+            "queue_order": ["review::a.py::x1"],
+            "skipped": {
+                "triage::enrich": {"kind": "temporary"},
+                "triage::sense-check": {"kind": "temporary"},
+                "review::z.py::x9": {"kind": "temporary"},
+            },
+        }
+
+        triage_helpers.inject_triage_stages(plan)
+
+        assert "triage::enrich" not in plan["skipped"]
+        assert "triage::sense-check" not in plan["skipped"]
+        assert "review::z.py::x9" in plan["skipped"]

@@ -11,7 +11,10 @@ Submodules:
 - reconcile: post-scan plan↔state synchronization
 - auto_cluster: automatic issue clustering
 - epic_triage*: LLM-powered triage pipeline
-- stale_dimensions: dimension staleness detection
+- _sync_context: shared helpers for all sync modules (mid-cycle, objective backlog)
+- sync_dimensions: subjective dimension queue sync
+- sync_triage: triage stage queue sync
+- sync_workflow: workflow gate queue sync
 - subjective_policy: subjective review scheduling
 - commit_tracking: git commit↔plan-item linking
 """

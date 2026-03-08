@@ -487,8 +487,12 @@ class TestIsTriageStale:
         state = _state_with_review_issues("r1")
         assert is_triage_stale(plan, state) is False
 
-    def test_stale_when_triage_stages_confirmed_and_triage_ids_in_queue(self):
-        """Stale when confirmed stages exist and triage IDs are in the queue."""
+    def test_not_stale_when_triage_in_progress(self):
+        """In-progress triage (confirmed stages + IDs in queue) is NOT stale.
+
+        The lifecycle filter in the work queue already forces triage stages
+        to the front — no need for is_triage_stale to double-gate.
+        """
         plan = {
             "epic_triage_meta": {
                 "triaged_ids": ["r1"],
@@ -497,21 +501,7 @@ class TestIsTriageStale:
             "queue_order": ["triage::observe", "triage::reflect"],
         }
         state = _state_with_review_issues("r1")
-        triage_ids = {"triage::observe", "triage::reflect"}
-        assert is_triage_stale(plan, state, triage_ids=triage_ids) is True
-
-    def test_not_stale_when_confirmed_but_no_triage_ids_in_queue(self):
-        """Not stale when stages confirmed but no triage IDs in queue_order."""
-        plan = {
-            "epic_triage_meta": {
-                "triaged_ids": ["r1"],
-                "triage_stages": {"observe": {"report": "analysis"}},
-            },
-            "queue_order": ["some_other_item"],
-        }
-        state = _state_with_review_issues("r1")
-        triage_ids = {"triage::observe", "triage::reflect"}
-        assert is_triage_stale(plan, state, triage_ids=triage_ids) is False
+        assert is_triage_stale(plan, state) is False
 
     def test_closed_review_issues_ignored(self):
         plan = {"epic_triage_meta": {"triaged_ids": []}}
@@ -531,8 +521,8 @@ class TestIsTriageStale:
         }
         assert is_triage_stale(plan, state) is False
 
-    def test_empty_triage_ids_kwarg_defaults_to_frozenset(self):
-        """Default triage_ids=frozenset() means the second branch never triggers."""
+    def test_not_stale_when_stages_in_queue_but_all_triaged(self):
+        """Triage stage IDs in queue don't trigger staleness if issues are triaged."""
         plan = {
             "epic_triage_meta": {
                 "triaged_ids": ["r1"],
@@ -541,7 +531,6 @@ class TestIsTriageStale:
             "queue_order": ["triage::observe"],
         }
         state = _state_with_review_issues("r1")
-        # Without passing triage_ids, the intersection is always empty
         assert is_triage_stale(plan, state) is False
 
     def test_synthesized_ids_not_used_as_fallback(self):

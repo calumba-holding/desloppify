@@ -58,7 +58,6 @@ class TestCmdScanExecution:
         runtime = SimpleNamespace(
             lang_label=" (python)",
             reset_subjective_count=0,
-            expired_manual_override_count=0,
             state={"dimension_scores": {}},
             config={},
             effective_include_slow=True,
@@ -149,7 +148,6 @@ class TestCmdScanExecution:
         runtime = SimpleNamespace(
             lang_label=" (python)",
             reset_subjective_count=0,
-            expired_manual_override_count=0,
             state={"dimension_scores": {}},
             config={},
             effective_include_slow=True,

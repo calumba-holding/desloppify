@@ -41,6 +41,14 @@ def _has_triage_stages(items: list[WorkQueueItem]) -> bool:
     )
 
 
+def _is_triage_stage(item: WorkQueueItem) -> bool:
+    """True when item is a triage workflow stage."""
+    return (
+        item.get("kind") == "workflow_stage"
+        and str(item.get("id", "")).startswith("triage::")
+    )
+
+
 def apply_lifecycle_filter(items: list[WorkQueueItem]) -> list[WorkQueueItem]:
     """Enforce lifecycle visibility rules."""
     if _has_initial_reviews(items):
@@ -49,6 +57,9 @@ def apply_lifecycle_filter(items: list[WorkQueueItem]) -> list[WorkQueueItem]:
             if item.get("kind") == "subjective_dimension" and item.get("initial_review")
         ]
     if _has_triage_stages(items):
+        # Triage should not block while objective queue work still exists.
+        if _has_objective_items(items):
+            return [item for item in items if not _is_triage_stage(item)]
         return [
             item for item in items
             if item.get("kind") in ("workflow_stage", "workflow_action")

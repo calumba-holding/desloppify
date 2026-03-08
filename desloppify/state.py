@@ -33,8 +33,6 @@ from desloppify.engine._state.resolution import (
 )
 from desloppify.engine._state.schema import (
     CURRENT_VERSION,
-    STATE_DIR,
-    STATE_FILE,
     ConcernDismissal,
     DimensionScore,
     Issue,
@@ -96,8 +94,6 @@ __all__ = [
     "CURRENT_VERSION",
     "DEFAULT_ISSUE_NOISE_BUDGET",
     "DEFAULT_ISSUE_NOISE_GLOBAL_BUDGET",
-    "STATE_DIR",
-    "STATE_FILE",
     "get_state_dir",
     "get_state_file",
     # Functions

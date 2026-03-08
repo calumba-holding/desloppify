@@ -476,7 +476,7 @@ def test_sense_check_validation_ok(tmp_path: Path) -> None:
 
 def test_sense_check_stage_in_pipeline_order() -> None:
     """sense-check must appear between enrich and commit in TRIAGE_STAGE_IDS."""
-    from desloppify.engine._plan.stale_dimensions import TRIAGE_STAGE_IDS
+    from desloppify.engine._plan.constants import TRIAGE_STAGE_IDS
 
     ids = list(TRIAGE_STAGE_IDS)
     assert "triage::sense-check" in ids

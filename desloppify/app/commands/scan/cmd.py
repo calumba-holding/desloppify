@@ -139,15 +139,6 @@ def cmd_scan(args: argparse.Namespace) -> None:
                 "yellow",
             )
         )
-    if runtime.expired_manual_override_count > 0:
-        print(
-            colorize(
-                "  * Expired provisional manual-override assessments: "
-                f"{runtime.expired_manual_override_count} dimension(s) reset to 0. "
-                "Run a trusted review to replace them (see skill doc for options).",
-                "yellow",
-            )
-        )
     _show_coverage_preflight(runtime)
 
     issues, potentials, codebase_metrics = orchestrator.generate()

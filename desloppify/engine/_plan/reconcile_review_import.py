@@ -24,11 +24,14 @@ class ReviewImportSyncResult:
 def sync_plan_after_review_import(
     plan: PlanModel,
     state: StateModel,
+    *,
+    policy=None,
 ) -> ReviewImportSyncResult | None:
     """Sync plan queue after review import. Pure engine function — no I/O.
 
     Appends new issue IDs to queue_order and injects triage stages
-    if needed. Returns None when there are no new issues to sync.
+    if needed (respects mid-cycle guard — defers when objective work
+    remains).  Returns None when there are no new issues to sync.
     """
     ensure_plan_defaults(plan)
     new_ids = compute_new_issue_ids(plan, state)
@@ -44,8 +47,8 @@ def sync_plan_after_review_import(
             order.append(issue_id)
             added.append(issue_id)
 
-    # Inject triage stages if needed
-    triage_result = sync_triage_needed(plan, state)
+    # Inject triage stages if needed (policy enables mid-cycle guard)
+    triage_result = sync_triage_needed(plan, state, policy=policy)
     triage_injected = bool(
         triage_result and getattr(triage_result, "injected", False)
     )

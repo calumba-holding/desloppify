@@ -6,7 +6,7 @@ import argparse
 
 import desloppify.app.commands.plan.triage_handlers as triage_mod
 from desloppify.engine._plan.schema import empty_plan
-from desloppify.engine._plan.stale_dimensions import TRIAGE_STAGE_IDS
+from desloppify.engine._plan.constants import TRIAGE_STAGE_IDS
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -378,3 +378,30 @@ class TestTriageStart:
         assert "clearing" in out.lower()
         stages = plan["epic_triage_meta"]["triage_stages"]
         assert stages == {}
+
+    def test_start_repairs_partial_triage_queue_and_skipped_overlap(self, monkeypatch, capsys):
+        """--start restores missing triage stages and clears triage skips."""
+        plan = empty_plan()
+        plan["queue_order"] = list(TRIAGE_STAGE_IDS[:3])
+        plan["skipped"] = {
+            "triage::enrich": {"kind": "temporary"},
+            "triage::sense-check": {"kind": "temporary"},
+            "triage::commit": {"kind": "temporary"},
+            "review::x.py::id1": {"kind": "temporary"},
+        }
+        state = _state_with_review_issues("r1")
+
+        monkeypatch.setattr(triage_mod, "load_plan", lambda *a, **kw: plan)
+        monkeypatch.setattr(triage_mod, "command_runtime", lambda args: _fake_runtime(state))
+        monkeypatch.setattr(triage_mod, "save_plan", lambda p, *a, **kw: None)
+        monkeypatch.setattr(triage_mod, "require_completed_scan", lambda s: True)
+
+        args = _fake_args(start=True)
+        triage_mod.cmd_plan_triage(args)
+        out = capsys.readouterr().out
+        assert "already in the queue" in out.lower()
+        assert plan["queue_order"][: len(TRIAGE_STAGE_IDS)] == list(TRIAGE_STAGE_IDS)
+        assert "triage::enrich" not in plan["skipped"]
+        assert "triage::sense-check" not in plan["skipped"]
+        assert "triage::commit" not in plan["skipped"]
+        assert "review::x.py::id1" in plan["skipped"]

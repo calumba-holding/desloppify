@@ -13,10 +13,7 @@ import pytest
 
 import desloppify.app.commands.scan.plan_reconcile as reconcile_mod
 from desloppify.engine._plan.schema import empty_plan
-from desloppify.engine._plan.stale_dimensions import (
-    StaleDimensionSyncResult,
-    UnscoredDimensionSyncResult,
-)
+from desloppify.engine._plan.constants import QueueSyncResult
 
 
 # ---------------------------------------------------------------------------
@@ -231,7 +228,7 @@ class TestSyncUnscoredDimensions:
         plan["queue_order"] = ["issue-1"]
 
         def mock_sync(p, s):
-            result = UnscoredDimensionSyncResult()
+            result = QueueSyncResult()
             result.injected = ["subjective::naming"]
             p["queue_order"].insert(0, "subjective::naming")
             return result
@@ -244,7 +241,7 @@ class TestSyncUnscoredDimensions:
         plan = empty_plan()
         plan["queue_order"] = ["issue-1"]
         changed = reconcile_mod._sync_unscored_dimensions(
-            plan, {}, lambda p, s: UnscoredDimensionSyncResult(),
+            plan, {}, lambda p, s: QueueSyncResult(),
         )
         assert changed is False
 
@@ -252,7 +249,7 @@ class TestSyncUnscoredDimensions:
         plan = empty_plan()
 
         def mock_sync(p, s):
-            result = UnscoredDimensionSyncResult()
+            result = QueueSyncResult()
             result.injected = ["subjective::naming", "subjective::docs"]
             return result
 
@@ -272,7 +269,7 @@ class TestSyncStaleDimensions:
         plan["queue_order"] = ["issue-1"]
 
         def mock_sync(p, s):
-            result = StaleDimensionSyncResult()
+            result = QueueSyncResult()
             result.injected = ["subjective::naming"]
             p["queue_order"].append("subjective::naming")
             return result
@@ -285,7 +282,7 @@ class TestSyncStaleDimensions:
         plan = empty_plan()
 
         def mock_sync(p, s):
-            result = StaleDimensionSyncResult()
+            result = QueueSyncResult()
             result.pruned = ["subjective::naming"]
             return result
 
@@ -298,7 +295,7 @@ class TestSyncStaleDimensions:
         plan = empty_plan()
 
         def mock_sync(p, s):
-            result = StaleDimensionSyncResult()
+            result = QueueSyncResult()
             result.injected = ["subjective::naming"]
             return result
 
@@ -309,7 +306,7 @@ class TestSyncStaleDimensions:
     def test_no_change_when_nothing_stale(self):
         plan = empty_plan()
         changed = reconcile_mod._sync_stale_dimensions(
-            plan, {}, lambda p, s: StaleDimensionSyncResult(),
+            plan, {}, lambda p, s: QueueSyncResult(),
         )
         assert changed is False
 

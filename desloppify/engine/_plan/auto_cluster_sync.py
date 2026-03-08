@@ -18,11 +18,11 @@ from desloppify.engine._plan.cluster_strategy import (
 from desloppify.engine._plan.cluster_strategy import (
     grouping_key as _grouping_key,
 )
-from desloppify.engine._plan.constants import SUBJECTIVE_PREFIX
-from desloppify.engine._plan.subjective_policy import (
-    NON_OBJECTIVE_DETECTORS,
-    SubjectiveVisibility,
+from desloppify.engine._plan._sync_context import (
+    has_objective_backlog as _has_objective_backlog,
 )
+from desloppify.engine._plan.constants import SUBJECTIVE_PREFIX
+from desloppify.engine._plan.subjective_policy import SubjectiveVisibility
 from desloppify.engine._plan.sync_auto_prune import prune_stale_clusters
 from desloppify.engine._plan.sync_dimensions import (
     current_under_target_ids,
@@ -124,21 +124,6 @@ def _subjective_state_sets(
         stale_ids = stale_policy_mod.current_stale_ids(state, subjective_prefix=SUBJECTIVE_PREFIX)
         under_target_ids = current_under_target_ids(state, target_strict=target_strict)
     return stale_ids, under_target_ids, unscored_ids
-
-
-def _has_objective_backlog(
-    issues: dict,
-    policy: SubjectiveVisibility | None,
-) -> bool:
-    """Check if objective backlog exists (open non-subjective issues)."""
-    if policy is not None:
-        return policy.has_objective_backlog
-    return any(
-        f.get("status") == "open"
-        and f.get("detector") not in NON_OBJECTIVE_DETECTORS
-        and not f.get("suppressed")
-        for f in issues.values()
-    )
 
 
 def _sync_auto_cluster(

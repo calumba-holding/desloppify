@@ -51,8 +51,6 @@ __all__ = [
     "IgnoreIntegrityModel",
     "StateModel",
     "ScanDiff",
-    "STATE_DIR",
-    "STATE_FILE",
     "get_state_dir",
     "get_state_file",
     "CURRENT_VERSION",
@@ -79,8 +77,6 @@ def get_state_file() -> Path:
     return get_state_dir() / "state.json"
 
 
-STATE_DIR = get_state_dir()
-STATE_FILE = get_state_file()
 CURRENT_VERSION = 1
 
 

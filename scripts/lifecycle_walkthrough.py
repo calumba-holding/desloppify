@@ -29,14 +29,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from desloppify.base.subjective_dimensions import DISPLAY_NAMES
 from desloppify.engine._plan.operations_lifecycle import purge_ids
 from desloppify.engine._plan.schema import empty_plan
-from desloppify.engine._plan.stale_dimensions import (
+from desloppify.engine._plan.constants import (
     TRIAGE_STAGE_IDS,
     WORKFLOW_COMMUNICATE_SCORE_ID,
     WORKFLOW_CREATE_PLAN_ID,
+)
+from desloppify.engine._plan.sync_dimensions import sync_unscored_dimensions
+from desloppify.engine._plan.sync_triage import sync_triage_needed
+from desloppify.engine._plan.sync_workflow import (
     sync_communicate_score_needed,
     sync_create_plan_needed,
-    sync_triage_needed,
-    sync_unscored_dimensions,
 )
 from desloppify.engine._state.schema import empty_state, utc_now
 
