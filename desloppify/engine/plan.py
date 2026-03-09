@@ -46,9 +46,14 @@ from desloppify.engine._plan.triage_playbook import (
     TRIAGE_CMD_OBSERVE,
     TRIAGE_CMD_ORGANIZE,
     TRIAGE_CMD_REFLECT,
+    TRIAGE_CMD_RUN_STAGES_CLAUDE,
+    TRIAGE_CMD_RUN_STAGES_CODEX,
     TRIAGE_CMD_SENSE_CHECK,
     TRIAGE_STAGE_DEPENDENCIES,
     TRIAGE_STAGE_LABELS,
+    triage_manual_stage_command,
+    triage_run_stages_command,
+    triage_runner_commands,
 )
 
 # --- operations -------------------------------------------------------------
@@ -77,6 +82,18 @@ from desloppify.engine._plan.operations_skip import (
     resurface_stale_skips,
     skip_items,
     unskip_items,
+)
+from desloppify.engine._plan.project_policy import (
+    add_rule,
+    load_policy,
+    remove_rule,
+    render_policy_block,
+    save_policy,
+)
+from desloppify.engine._plan.refresh_lifecycle import (
+    clear_postflight_scan_completion,
+    mark_postflight_scan_completed,
+    postflight_scan_pending,
 )
 from desloppify.engine._plan.skip_policy import (
     SKIP_KIND_LABELS,
@@ -191,13 +208,17 @@ def triage_phase_banner(plan: PlanModel, state: dict | None = None) -> str:
     order = set(plan.get("queue_order", []))
     has_triage = any(sid in order for sid in TRIAGE_IDS)
     meta = plan.get("epic_triage_meta", {})
+    run_hint = (
+        f"Run: {TRIAGE_CMD_RUN_STAGES_CODEX} "
+        f"(or {TRIAGE_CMD_RUN_STAGES_CLAUDE})"
+    )
 
     if not has_triage:
         # No stages in queue — check for deferred recommendation
         if meta.get("triage_recommended"):
             return (
                 "TRIAGE RECOMMENDED — review issues changed since last triage. "
-                "Run: desloppify plan triage"
+                f"{run_hint}"
             )
         return ""
 
@@ -211,11 +232,11 @@ def triage_phase_banner(plan: PlanModel, state: dict | None = None) -> str:
     if completed:
         return (
             f"TRIAGE MODE ({len(completed)}/5 stages complete) — "
-            "complete all stages to exit. Run: desloppify plan triage"
+            f"complete all stages to exit. {run_hint}"
         )
     return (
         "TRIAGE MODE — review issues need analysis before fixing. "
-        "Run: desloppify plan triage"
+        f"{run_hint}"
     )
 
 

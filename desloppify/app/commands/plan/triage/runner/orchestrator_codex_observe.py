@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import partial
 from pathlib import Path
 
-from desloppify.app.runner.codex_process import BatchProgressEvent
+from desloppify.app.commands.review.runner_parallel import BatchProgressEvent
 from desloppify.base.discovery.file_paths import safe_write_text
 from desloppify.base.output.terminal import colorize
 

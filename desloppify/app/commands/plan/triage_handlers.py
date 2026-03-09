@@ -12,9 +12,9 @@ from desloppify.app.commands.plan.triage import helpers as _helpers_mod
 from desloppify.app.commands.plan.triage import services as _services_mod
 from desloppify.app.commands.plan.triage import stage_completion_commands as _completion_mod
 from desloppify.app.commands.plan.triage import stage_flow_commands as _flow_mod
-from desloppify.engine._plan.triage_playbook import TRIAGE_CMD_OBSERVE
 from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import (
+    TRIAGE_CMD_OBSERVE,
     append_log_entry,
     build_triage_prompt,
     collect_triage_input,

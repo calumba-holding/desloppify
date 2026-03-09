@@ -25,8 +25,11 @@ def build_workflow_guide(attest_example: str) -> str:
         5. **Rescan**: `desloppify scan --path <path>` — verify improvements, catch cascading effects.
         6. **Subjective review**: `desloppify review --prepare` then follow your runner's review workflow
            (see skill doc for Codex, Claude, or external paths).
-        7. **Triage** (after review): `desloppify plan triage` — staged workflow to analyze
-           issues before fixing. Complete all stages (observe → reflect → organize → enrich → sense-check → commit).
+        7. **Triage** (after review): prefer
+           `desloppify plan triage --run-stages --runner codex` or
+           `desloppify plan triage --run-stages --runner claude`.
+           Manual dashboard/fallback: `desloppify plan triage`.
+           Complete all stages (observe → reflect → organize → enrich → sense-check → commit).
         8. **Check progress**: `desloppify status` — dimension scores dashboard.
 
         ### Decision Guide

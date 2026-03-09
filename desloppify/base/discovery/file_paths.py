@@ -43,7 +43,7 @@ def safe_relpath(path: str | Path, start: str | Path) -> str:
         return str(Path(path).resolve())
 
 
-def to_project_relative_path(path: str | Path) -> str:
+def rel(path: str | Path) -> str:
     """Return a normalized project-relative path when possible."""
     root = get_project_root()
     resolved = Path(path).resolve()
@@ -51,11 +51,6 @@ def to_project_relative_path(path: str | Path) -> str:
         return normalize_path_separators(str(resolved.relative_to(root)))
     except ValueError:
         return normalize_path_separators(safe_relpath(resolved, root))
-
-
-def rel(path: str | Path) -> str:
-    """Compatibility alias for :func:`to_project_relative_path`."""
-    return to_project_relative_path(path)
 
 
 def resolve_path(filepath: str) -> str:
@@ -127,7 +122,6 @@ __all__ = [
     "matches_exclusion",
     "normalize_path_separators",
     "rel",
-    "to_project_relative_path",
     "resolve_path",
     "resolve_scan_file",
     "safe_relpath",

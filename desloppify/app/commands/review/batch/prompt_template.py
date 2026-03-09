@@ -103,6 +103,7 @@ def render_batch_prompt(
     packet_path: Path,
     batch_index: int,
     batch: dict[str, object],
+    policy_block: str = "",
 ) -> str:
     """Render one subagent prompt for a holistic investigation batch."""
     context = build_batch_context(batch, batch_index)
@@ -115,6 +116,7 @@ def render_batch_prompt(
             context=context,
         ),
         render_dimension_prompts_block(context.dimensions, dim_prompts),
+        policy_block,
         render_scoring_frame(),
         render_scan_evidence_note(),
         render_seed_files_block(context),

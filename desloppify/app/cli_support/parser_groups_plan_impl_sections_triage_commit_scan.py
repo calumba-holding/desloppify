@@ -9,6 +9,15 @@ def _add_triage_subparser(plan_sub) -> None:
     p_triage = plan_sub.add_parser(
         "triage",
         help="Staged triage workflow for review issues",
+        epilog="""\
+examples:
+  desloppify plan triage
+  desloppify plan triage --run-stages --runner codex
+  desloppify plan triage --run-stages --runner claude
+  desloppify plan triage --run-stages --runner codex --only-stages organize
+  desloppify plan triage --stage observe --report "..."   # manual fallback
+  desloppify plan triage --confirm-existing --note "..." --strategy "same" --confirmed "I reviewed the new issues and the existing plan still holds."\
+""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p_triage.add_argument(
@@ -69,11 +78,11 @@ def _add_triage_subparser(plan_sub) -> None:
     # Subagent runner
     p_triage.add_argument(
         "--run-stages", action="store_true", default=False,
-        help="Run triage stages via subagent runner",
+        help="Preferred: run triage stages via the codex/claude staged runner",
     )
     p_triage.add_argument(
         "--runner", choices=["codex", "claude"], default="codex",
-        help="Subagent runner type (default: codex)",
+        help="Runner for --run-stages (default: codex)",
     )
     p_triage.add_argument(
         "--stage-timeout-seconds", type=int, default=1800,
@@ -142,8 +151,27 @@ examples:
     )
 
 
+def _add_policy_subparser(plan_sub) -> None:
+    p_policy = plan_sub.add_parser(
+        "policy",
+        help="Manage project policy rules (enforced during triage and review)",
+        epilog="""\
+examples:
+  desloppify plan policy                            # list rules
+  desloppify plan policy add "No re-export facades" # add a rule
+  desloppify plan policy remove 2                   # remove rule #2""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    policy_sub = p_policy.add_subparsers(dest="policy_action")
+    p_add = policy_sub.add_parser("add", help="Add a policy rule")
+    p_add.add_argument("rule_text", type=str, help="Rule text")
+    p_remove = policy_sub.add_parser("remove", help="Remove a policy rule by number")
+    p_remove.add_argument("rule_index", type=int, help="Rule number to remove")
+
+
 __all__ = [
     "_add_commit_log_subparser",
+    "_add_policy_subparser",
     "_add_scan_gate_subparser",
     "_add_triage_subparser",
 ]

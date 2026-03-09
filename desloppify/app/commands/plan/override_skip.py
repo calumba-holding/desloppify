@@ -26,6 +26,7 @@ from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
 from desloppify.engine.plan import (
     SKIP_KIND_LABELS,
     append_log_entry,
+    clear_postflight_scan_completion,
     load_plan,
     save_plan,
     skip_items,
@@ -104,6 +105,46 @@ def cmd_plan_skip(args: argparse.Namespace) -> None:
     attestation: str | None = getattr(args, "attest", None)
 
     kind = skip_kind_from_flags(permanent=permanent, false_positive=false_positive)
+
+    # Temporary skips with --confirm are deferrals — require the caller to
+    # attest they've actually thought about it, not just pushing work away.
+    # Permanent/false-positive skips have their own attestation via
+    # _validate_skip_requirements, so this only gates temporary deferrals.
+    if getattr(args, "confirm", False) and kind == "temporary":
+        if not reason:
+            print(
+                colorize(
+                    "  --confirm requires --reason to describe why this is being deferred.",
+                    "red",
+                )
+            )
+            return
+        _SKIP_DEFER_PHRASES = ("i have actually reflected", "not deferring")
+        normalized_attest = " ".join((attestation or "").strip().lower().split())
+        missing = [p for p in _SKIP_DEFER_PHRASES if p not in normalized_attest]
+        if missing:
+            print(
+                colorize(
+                    "  Deferring items requires you to confirm you've thought this through.",
+                    "yellow",
+                )
+            )
+            print(
+                colorize(
+                    "  Add this to your command:",
+                    "dim",
+                )
+            )
+            print()
+            print(
+                colorize(
+                    '    --attest "I have actually reflected and '
+                    'I am not deferring this for lazy reasons."',
+                    "dim",
+                )
+            )
+            print()
+            return
     if not _validate_skip_requirements(kind=kind, attestation=attestation, note=note):
         return
 
@@ -157,6 +198,7 @@ def cmd_plan_skip(args: argparse.Namespace) -> None:
         note=note,
         detail={"kind": kind, "reason": reason},
     )
+    clear_postflight_scan_completion(plan, issue_ids=issue_ids)
     if state_data is not None:
         save_plan_state_transactional(
             plan=plan,
@@ -170,6 +212,14 @@ def cmd_plan_skip(args: argparse.Namespace) -> None:
     print(colorize(f"  {SKIP_KIND_LABELS[kind]} {count} item(s).", "green"))
     if review_after:
         print(colorize(f"  Will re-surface after {review_after} scan(s).", "dim"))
+    if kind == "temporary":
+        print(
+            colorize(
+                "  If you're actually not going to fix these, use "
+                "`desloppify plan skip <patterns> --permanent` instead to wontfix them.",
+                "dim",
+            )
+        )
     print_user_message(
         "Hey — if skipping was the right call, just continue with"
         " what you were doing. If you think a broader re-triage is"
@@ -210,6 +260,7 @@ def cmd_plan_unskip(args: argparse.Namespace) -> None:
         actor="user",
         detail={"need_reopen": need_reopen},
     )
+    clear_postflight_scan_completion(plan, issue_ids=unskipped_ids)
 
     reopened: list[str] = []
     if need_reopen:

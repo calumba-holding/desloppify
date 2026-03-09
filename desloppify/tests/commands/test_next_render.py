@@ -5,7 +5,6 @@ from __future__ import annotations
 import desloppify.app.commands.next.render as render_mod
 import desloppify.app.commands.next.render_support as support_mod
 
-
 # ---------------------------------------------------------------------------
 # Helpers — realistic work-queue items
 # ---------------------------------------------------------------------------
@@ -64,7 +63,7 @@ def _workflow_stage_item(
     stage_name: str = "observe",
     is_blocked: bool = False,
     blocked_by: list[str] | None = None,
-    primary_command: str = "desloppify plan triage --stage observe",
+    primary_command: str = "desloppify plan triage --run-stages --runner codex --only-stages observe",
     detail: dict | None = None,
     **extra,
 ) -> dict:
@@ -345,13 +344,32 @@ def test_render_workflow_stage_unblocked(monkeypatch, capsys) -> None:
     """An unblocked workflow stage shows the stage name and action."""
     monkeypatch.setattr(render_mod, "colorize", lambda t, _s: t)
 
-    item = _workflow_stage_item()
+    item = _workflow_stage_item(
+        detail={
+            "runner_commands": [
+                {
+                    "label": "Codex",
+                    "command": "desloppify plan triage --run-stages --runner codex --only-stages observe",
+                },
+                {
+                    "label": "Claude",
+                    "command": "desloppify plan triage --run-stages --runner claude --only-stages observe",
+                },
+            ],
+            "manual_fallback": 'desloppify plan triage --stage observe --report "analysis of themes and root causes..."',
+        },
+    )
     render_mod.render_terminal_items(
         [item], {}, {}, group="item", explain=False,
     )
     out = capsys.readouterr().out
     assert "Planning stage: observe" in out
-    assert "Action: desloppify plan triage --stage observe" in out
+    assert (
+        "Action: desloppify plan triage --run-stages --runner codex --only-stages observe"
+        in out
+    )
+    assert "Claude: desloppify plan triage --run-stages --runner claude --only-stages observe" in out
+    assert 'Manual fallback: desloppify plan triage --stage observe --report "analysis of themes and root causes..."' in out
     assert "[blocked]" not in out
 
 
@@ -371,7 +389,14 @@ def test_render_workflow_stage_blocked(monkeypatch, capsys) -> None:
     out = capsys.readouterr().out
     assert "[blocked]" in out
     assert "Blocked by: observe" in out
-    assert "Next step: desloppify plan triage --stage observe" in out
+    assert (
+        "Next step: desloppify plan triage --run-stages --runner codex --only-stages observe"
+        in out
+    )
+    assert (
+        "Alt runner: desloppify plan triage --run-stages --runner claude --only-stages observe"
+        in out
+    )
 
 
 def test_render_workflow_stage_with_review_issues(monkeypatch, capsys) -> None:

@@ -6,11 +6,12 @@ import argparse
 from pathlib import Path
 from types import SimpleNamespace
 
-import desloppify.app.commands.plan.triage.runner.stage_prompts_instructions as prompts_instructions_mod
+import desloppify.app.commands.plan.triage.runner.stage_prompts_instruction_blocks as prompts_instructions_mod
 import desloppify.app.commands.plan.triage.runner.stage_prompts_observe as prompts_observe_mod
 import desloppify.app.commands.plan.triage.runner.stage_prompts_sense as prompts_sense_mod
 import desloppify.app.commands.plan.triage.runner.stage_prompts_validation as prompts_validation_mod
-import desloppify.app.commands.plan.triage.stage_flow_enrich_sense as stage_flow_mod
+import desloppify.app.commands.plan.triage.stage_flow_enrich as stage_flow_enrich_mod
+import desloppify.app.commands.plan.triage.stage_flow_sense_check as stage_flow_sense_mod
 
 
 class _Services:
@@ -92,7 +93,7 @@ def test_run_stage_enrich_handles_no_queue_and_records_stage(tmp_path, capsys) -
     args = argparse.Namespace(report="x" * 120, attestation=None)
 
     empty_services = _Services(plan={})
-    stage_flow_mod.run_stage_enrich(
+    stage_flow_enrich_mod.run_stage_enrich(
         args,
         services=empty_services,
         has_triage_in_queue_fn=lambda _plan: False,
@@ -123,7 +124,7 @@ def test_run_stage_enrich_handles_no_queue_and_records_stage(tmp_path, capsys) -
         }
         return []
 
-    stage_flow_mod.run_stage_enrich(
+    stage_flow_enrich_mod.run_stage_enrich(
         args,
         services=services,
         has_triage_in_queue_fn=lambda _plan: True,
@@ -145,7 +146,7 @@ def test_run_stage_enrich_handles_no_queue_and_records_stage(tmp_path, capsys) -
 
 def test_record_sense_stage_and_run_stage_sense_check(tmp_path, capsys) -> None:
     stages: dict = {}
-    cleared = stage_flow_mod.record_sense_check_stage(
+    cleared = stage_flow_sense_mod.record_sense_check_stage(
         stages,
         report="x" * 120,
         existing_stage=None,
@@ -174,7 +175,7 @@ def test_record_sense_stage_and_run_stage_sense_check(tmp_path, capsys) -> None:
         }
         return []
 
-    stage_flow_mod.run_stage_sense_check(
+    stage_flow_sense_mod.run_stage_sense_check(
         args,
         services=services,
         has_triage_in_queue_fn=lambda _plan: True,

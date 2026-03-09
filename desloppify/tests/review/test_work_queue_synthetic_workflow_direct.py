@@ -96,8 +96,16 @@ def test_build_create_plan_item_advances_to_next_pending_stage() -> None:
     )
     assert create_item is not None
     assert create_item["id"] == WORKFLOW_CREATE_PLAN_ID
-    assert create_item["primary_command"].startswith(
-        'desloppify plan triage --stage reflect --report "'
+    assert (
+        create_item["primary_command"]
+        == "desloppify plan triage --run-stages --runner codex --only-stages reflect"
+    )
+    tools = create_item["detail"]["planning_tools"]
+    assert tools[0]["command"] == (
+        "desloppify plan triage --run-stages --runner codex --only-stages reflect"
+    )
+    assert tools[1]["command"] == (
+        "desloppify plan triage --run-stages --runner claude --only-stages reflect"
     )
 
 

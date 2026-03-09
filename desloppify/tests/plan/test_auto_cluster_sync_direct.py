@@ -211,3 +211,41 @@ def test_subjective_state_sets_fallback_uses_module_helpers(monkeypatch) -> None
     assert stale_ids == {"subjective::stale"}
     assert under_target_ids == {"subjective::97"}
     assert unscored_ids == {"subjective::a"}
+
+
+def test_sync_subjective_clusters_does_not_append_skipped_under_target_ids() -> None:
+    plan = {
+        "queue_order": [],
+        "clusters": {},
+        "overrides": {},
+        "skipped": {
+            "subjective::architecture": {"kind": "permanent"},
+            "subjective::api_surface": {"kind": "permanent"},
+        },
+    }
+    existing_by_key: dict[str, str] = {}
+    active_auto_keys: set[str] = set()
+
+    policy = SubjectiveVisibility(
+        has_objective_backlog=False,
+        objective_count=0,
+        unscored_ids=frozenset(),
+        stale_ids=frozenset(),
+        under_target_ids=frozenset({"subjective::architecture", "subjective::api_surface"}),
+    )
+
+    changes = sync_mod.sync_subjective_clusters(
+        plan,
+        state={"issues": {}},
+        issues={},
+        clusters=plan["clusters"],
+        existing_by_key=existing_by_key,
+        active_auto_keys=active_auto_keys,
+        now=NOW,
+        target_strict=95.0,
+        policy=policy,
+    )
+
+    assert changes == 0
+    assert plan["queue_order"] == []
+    assert "auto/under-target-review" not in plan["clusters"]

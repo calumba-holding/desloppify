@@ -37,7 +37,7 @@ from desloppify.languages.typescript.review import (
 )
 from desloppify.languages.typescript._zones import TS_ZONE_RULES
 from desloppify.languages.typescript.detectors import deps as deps_detector_mod
-from desloppify.languages.typescript.detectors.security import _detect_ts_security_result
+from desloppify.languages.typescript.detectors.security.detector import _detect_ts_security_result
 from desloppify.languages.typescript.phases import (
     TS_COMPLEXITY_SIGNALS,
     TS_GOD_RULES,

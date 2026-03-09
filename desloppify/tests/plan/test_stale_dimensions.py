@@ -192,6 +192,31 @@ def test_unscored_no_duplicates():
     assert plan["queue_order"].count("subjective::design_coherence") == 1
 
 
+def test_unscored_sync_resurfaces_skipped_subjective_ids():
+    """Unscored subjective IDs are forcibly resurfaced even if previously skipped."""
+    plan = _plan_with_queue()
+    plan["skipped"] = {"subjective::design_coherence": {"kind": "permanent"}}
+    state = _state_with_unscored_dimensions("design_coherence")
+
+    result = sync_unscored_dimensions(plan, state)
+    assert result.injected == ["subjective::design_coherence"]
+    assert plan["queue_order"] == ["subjective::design_coherence"]
+    assert "subjective::design_coherence" not in plan["skipped"]
+
+
+def test_unscored_sync_repairs_skipped_overlap():
+    """If overlap exists, sync removes skip entry and keeps exactly one queue entry."""
+    plan = _plan_with_queue("subjective::design_coherence")
+    plan["skipped"] = {"subjective::design_coherence": {"kind": "permanent"}}
+    state = _state_with_unscored_dimensions("design_coherence")
+
+    result = sync_unscored_dimensions(plan, state)
+    assert result.injected == []
+    assert result.pruned == []
+    assert plan["queue_order"] == ["subjective::design_coherence"]
+    assert "subjective::design_coherence" not in plan["skipped"]
+
+
 # ---------------------------------------------------------------------------
 # Injection: empty queue + stale dimensions
 # ---------------------------------------------------------------------------

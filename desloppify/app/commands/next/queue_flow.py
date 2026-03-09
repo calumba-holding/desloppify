@@ -97,6 +97,7 @@ def build_and_render_queue(
     target_strict = target_strict_score_from_config(config)
 
     plan = load_plan_fn()
+    plan_for_queue = plan
     plan_data: dict | None = None
     if plan.get("queue_order") or plan.get("overrides") or plan.get("clusters"):
         plan_data = plan
@@ -105,12 +106,12 @@ def build_and_render_queue(
     ctx = queue_context(
         state,
         config=config,
-        plan=plan_data,
+        plan=plan_for_queue,
         target_strict=target_strict,
     )
 
     effective_cluster = _resolve_cluster_focus(
-        plan_data,
+        plan_for_queue,
         cluster_arg=opts.cluster,
         scope=opts.scope,
     )
@@ -130,11 +131,11 @@ def build_and_render_queue(
     )
     items = queue.get("items", [])
 
-    if effective_cluster and plan_data:
-        items = filter_cluster_focus(items, plan_data, effective_cluster)
+    if effective_cluster and plan_for_queue:
+        items = filter_cluster_focus(items, plan_for_queue, effective_cluster)
 
-    if plan_data and not effective_cluster and not plan_data.get("active_cluster"):
-        items = collapse_clusters(items, plan_data)
+    if plan_for_queue and not effective_cluster and not plan_for_queue.get("active_cluster"):
+        items = collapse_clusters(items, plan_for_queue)
 
     if opts.count:
         items = items[: opts.count]
@@ -144,10 +145,10 @@ def build_and_render_queue(
     if not items:
         strict_score = state_mod.score_snapshot(state).strict
         plan_start_strict = None
-        if plan_data:
+        if plan_for_queue:
             plan_start_strict, _ = _plan_queue_context(
                 state=state,
-                plan_data=plan_data,
+                plan_data=plan_for_queue,
                 context=ctx,
             )
         _render_queue_header(queue, opts.explain)
@@ -198,7 +199,7 @@ def build_and_render_queue(
 
     plan_start_strict, breakdown = _plan_queue_context(
         state=state,
-        plan_data=plan_data,
+        plan_data=plan_for_queue,
         context=ctx,
     )
     queue_total = breakdown.queue_total if breakdown else 0

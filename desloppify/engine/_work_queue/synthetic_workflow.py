@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from desloppify.engine._plan.triage_playbook import (
+    triage_manual_stage_command,
+    triage_run_stages_command,
+    triage_runner_commands,
+)
 from desloppify.engine._work_queue.types import WorkQueueItem
-
 
 _TRIAGE_STAGE_SPECS: tuple[tuple[str, str], ...] = (
     ("observe", "triage::observe"),
@@ -42,6 +46,21 @@ def _confirm_attestation_hint(stage: str) -> str:
     return "..."
 
 
+def _runner_planning_tools(
+    *,
+    only_stages: str | None = None,
+    manual_fallback: str | None = None,
+) -> list[dict[str, str]]:
+    tools = [
+        {"label": label, "command": command}
+        for label, command in triage_runner_commands(only_stages=only_stages)
+    ]
+    if manual_fallback:
+        tools.append({"label": "Manual fallback", "command": manual_fallback})
+    tools.append({"label": "Dashboard", "command": "desloppify plan triage"})
+    return tools
+
+
 def _create_plan_primary_command(plan: dict) -> str:
     meta = plan.get("epic_triage_meta", {})
     triage_stages = meta.get("triage_stages", {}) or {}
@@ -60,15 +79,39 @@ def _create_plan_primary_command(plan: dict) -> str:
     for stage, sid in _TRIAGE_STAGE_SPECS:
         if sid not in order:
             continue
-        report_hint = _stage_report_hint(stage)
-        return f'desloppify plan triage --stage {stage} --report "{report_hint}"'
+        return triage_run_stages_command(only_stages=stage)
 
     if "triage::commit" in order:
-        return 'desloppify plan triage --complete --strategy "execution plan..."'
+        return triage_run_stages_command()
 
-    return (
-        'desloppify plan triage --stage observe --report '
-        '"Analysis of findings for plan creation..."'
+    return triage_run_stages_command()
+
+
+def _create_plan_planning_tools(plan: dict) -> list[dict[str, str]]:
+    meta = plan.get("epic_triage_meta", {})
+    triage_stages = meta.get("triage_stages", {}) or {}
+
+    for stage, _sid in _TRIAGE_STAGE_SPECS:
+        stage_payload = triage_stages.get(stage)
+        if isinstance(stage_payload, dict) and stage_payload and not stage_payload.get("confirmed_at"):
+            return []
+
+    order = set(plan.get("queue_order", []))
+    for stage, sid in _TRIAGE_STAGE_SPECS:
+        if sid in order:
+            return _runner_planning_tools(
+                only_stages=stage,
+                manual_fallback=triage_manual_stage_command(stage),
+            )
+
+    if "triage::commit" in order:
+        return _runner_planning_tools(
+            manual_fallback=triage_manual_stage_command("commit"),
+        )
+
+    return _runner_planning_tools(
+        only_stages="observe",
+        manual_fallback=triage_manual_stage_command("observe"),
     )
 
 
@@ -99,11 +142,12 @@ def build_score_checkpoint_item(plan: dict, state: dict) -> WorkQueueItem | None
             "strict": strict,
             "plan_start_strict": plan_start,
             "delta": delta,
+            "planning_tools": _runner_planning_tools(
+                only_stages="observe",
+                manual_fallback=triage_manual_stage_command("observe"),
+            ),
         },
-        "primary_command": (
-            'desloppify plan triage --stage observe --report '
-            '"Analysis of score and dimensions..."'
-        ),
+        "primary_command": triage_run_stages_command(only_stages="observe"),
         "blocked_by": [],
         "is_blocked": False,
     }
@@ -124,7 +168,9 @@ def build_create_plan_item(plan: dict) -> WorkQueueItem | None:
         "file": ".",
         "kind": "workflow_action",
         "summary": "Create prioritized plan from review results",
-        "detail": {},
+        "detail": {
+            "planning_tools": _create_plan_planning_tools(plan),
+        },
         "primary_command": _create_plan_primary_command(plan),
         "blocked_by": [],
         "is_blocked": False,

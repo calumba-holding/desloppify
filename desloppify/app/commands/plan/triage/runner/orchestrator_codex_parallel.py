@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from desloppify.app.runner.codex_process import (
+from desloppify.app.commands.review.runner_parallel import (
     BatchExecutionOptions,
     BatchProgressEvent,
     execute_batches,

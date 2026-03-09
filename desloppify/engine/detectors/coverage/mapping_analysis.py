@@ -228,20 +228,10 @@ def build_test_import_index(
     return index
 
 
-# Backward-compatible aliases for previous internal names.
-transitive_coverage_core = transitive_coverage
-analyze_test_quality_core = analyze_test_quality
-get_test_files_for_prod_core = get_test_files_for_prod
-build_test_import_index_core = build_test_import_index
-
 
 __all__ = [
     "analyze_test_quality",
-    "analyze_test_quality_core",
     "build_test_import_index",
-    "build_test_import_index_core",
     "get_test_files_for_prod",
-    "get_test_files_for_prod_core",
     "transitive_coverage",
-    "transitive_coverage_core",
 ]

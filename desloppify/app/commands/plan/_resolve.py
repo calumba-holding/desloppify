@@ -87,6 +87,12 @@ def resolve_ids_from_patterns(
             # Literal plan ID (e.g. subjective::foo) not in state issues
             _append_unique(pattern, seen, result)
             continue
+        # Glob/prefix match against plan IDs (skipped, queued, clustered)
+        plan_matches = _queue_pattern_matches(plan_ids, pattern)
+        if plan_matches:
+            for issue_id in plan_matches:
+                _append_unique(issue_id, seen, result)
+            continue
         if queue_ids is None:
             queue_ids = _collect_queue_ids(state, plan)
         queue_matches = _queue_pattern_matches(queue_ids, pattern)

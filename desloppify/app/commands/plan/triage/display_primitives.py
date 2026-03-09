@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from desloppify.base.output.terminal import colorize
-from desloppify.engine._plan.triage_playbook import (
+from desloppify.engine.plan import (
     TRIAGE_CMD_CLUSTER_ENRICH_COMPACT,
     TRIAGE_STAGE_DEPENDENCIES,
     TRIAGE_STAGE_LABELS,
+    triage_manual_stage_command,
+    triage_runner_commands,
 )
 
 from .helpers import manual_clusters_with_issues
@@ -31,7 +33,15 @@ def print_stage_progress(stages: dict, plan: dict | None = None) -> None:
         gaps = unenriched_clusters(plan)
         manual = manual_clusters_with_issues(plan)
         if not manual:
-            print(colorize("\n    No manual clusters yet. Create clusters and enrich them.", "yellow"))
+            print(colorize("\n    No manual clusters yet. Preferred next step:", "yellow"))
+            for label, command in triage_runner_commands(only_stages="organize"):
+                print(colorize(f"      {label}: {command}", "dim"))
+            print(
+                colorize(
+                    f"      Manual fallback: {triage_manual_stage_command('organize')}",
+                    "dim",
+                )
+            )
         elif gaps:
             print(colorize(f"\n    {len(gaps)} cluster(s) need enrichment:", "yellow"))
             for name, missing in gaps:

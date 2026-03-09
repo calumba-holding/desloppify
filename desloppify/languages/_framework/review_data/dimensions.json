@@ -33,7 +33,8 @@
       "skip": [
         "Standard framework names (render, mount, useEffect)",
         "Short-lived loop variables (i, j, k)",
-        "Well-known abbreviations matching codebase convention (ctx, req, res)"
+        "Well-known abbreviations matching codebase convention (ctx, req, res)",
+        "Short names that are established project conventions used consistently — a name used 50+ times is a convention, not an outlier"
       ]
     },
     "logic_clarity": {
@@ -226,7 +227,7 @@
       "description": "Naming convention drift, inconsistent file organization, style islands",
       "look_for": [
         "Naming convention drift: snake_case functions in a camelCase codebase or vice versa",
-        "Inconsistent file organization: some dirs use index files, others don't",
+        "Inconsistent file organization that impedes navigation (not mere structural variation between dirs)",
         "Mixed export patterns across sibling modules (named vs default, class vs function)",
         "Style islands: one directory uses a completely different pattern than the rest",
         "Sibling modules following different behavioral protocols (e.g. most call a shared function, one doesn't)",
@@ -236,7 +237,9 @@
       ],
       "skip": [
         "Intentional variation for different module types (config vs logic)",
-        "Third-party code or generated files following their own conventions"
+        "Third-party code or generated files following their own conventions",
+        "Do NOT recommend adding index/barrel files, re-export facades, or directory wrappers to 'standardize' — prefer the simpler existing pattern over consistency-for-its-own-sake",
+        "When sibling modules use different structures, report the inconsistency but do NOT suggest adding abstraction layers to unify them"
       ]
     },
     "dependency_health": {
@@ -370,9 +373,10 @@
       ],
       "skip": [
         "Functions that are long but have a single coherent responsibility",
-        "Parameter lists where grouping would obscure meaning",
+        "Parameter lists where grouping would obscure meaning — do NOT recommend config/context objects or dependency injection wrappers just to reduce parameter count; only group when the grouping has independent semantic meaning",
         "Files that are large because their domain is genuinely complex, not because they mix concerns",
-        "Nesting that is inherent to the problem (e.g., recursive tree processing)"
+        "Nesting that is inherent to the problem (e.g., recursive tree processing)",
+        "Do NOT recommend extracting callable parameters or injecting dependencies for 'testability' — direct function calls are simpler and preferred unless there is a concrete decoupling need"
       ],
       "meta": {
         "display_name": "Design coherence",

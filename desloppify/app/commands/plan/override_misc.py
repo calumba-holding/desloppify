@@ -18,6 +18,7 @@ from desloppify.engine.plan import (
     annotate_issue,
     append_log_entry,
     clear_focus,
+    clear_postflight_scan_completion,
     describe_issue,
     load_plan,
     purge_uncommitted_ids,
@@ -109,6 +110,7 @@ def cmd_plan_reopen(args: argparse.Namespace) -> None:
             count += 1
 
     append_log_entry(plan, "reopen", issue_ids=reopened, actor="user")
+    clear_postflight_scan_completion(plan, issue_ids=reopened)
     save_plan_state_transactional(
         plan=plan,
         plan_path=plan_file,

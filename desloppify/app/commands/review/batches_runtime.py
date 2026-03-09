@@ -127,7 +127,7 @@ class BatchProgressTracker:
                 {"position": self.batch_positions.get(idx, 0), "status": "pending"},
             )
             if idx not in failure_set:
-                state["status"] = "succeeded"
+                state["status"] = "recovered" if idx in execution_failure_set else "succeeded"
                 continue
             if idx in execution_failure_set:
                 state["status"] = "failed"

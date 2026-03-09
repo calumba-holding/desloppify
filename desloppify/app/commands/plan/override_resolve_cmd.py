@@ -31,6 +31,8 @@ from desloppify.engine.plan import (
     load_plan,
     purge_ids,
     save_plan,
+    triage_manual_stage_command,
+    triage_runner_commands,
 )
 
 from .override_resolve_helpers import (
@@ -110,6 +112,22 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
                     print(colorize(f"  Cannot resolve {wid} — triage not complete.", "red"))
                 print()
 
+                if next_stage == "commit":
+                    print(colorize("  Preferred runners:", "yellow"))
+                    for label, command in triage_runner_commands():
+                        print(colorize(f"    {label}: {command}", "dim"))
+                else:
+                    print(colorize("  Preferred runners:", "yellow"))
+                    for label, command in triage_runner_commands(only_stages=next_stage):
+                        print(colorize(f"    {label}: {command}", "dim"))
+                print(
+                    colorize(
+                        f"  Manual fallback: {triage_manual_stage_command(next_stage)}",
+                        "dim",
+                    )
+                )
+                print()
+
                 if next_stage == "observe":
                     print(
                         colorize(
@@ -120,12 +138,6 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
                     print(
                         colorize(
                             "  Start by examining themes, root causes, and contradictions:",
-                            "dim",
-                        )
-                    )
-                    print(
-                        colorize(
-                            '    desloppify plan triage --stage observe --report "..."',
                             "dim",
                         )
                     )
@@ -141,12 +153,6 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
                         colorize(
                             "  Observe is done. Now compare against previously completed work:",
                             "yellow",
-                        )
-                    )
-                    print(
-                        colorize(
-                            '    desloppify plan triage --stage reflect --report "..."',
-                            "dim",
                         )
                     )
                     print()
@@ -183,7 +189,7 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
                     )
                     print(
                         colorize(
-                            '    desloppify plan triage --stage organize --report "..."',
+                            f"    {triage_manual_stage_command('organize')}",
                             "dim",
                         )
                     )
@@ -207,23 +213,11 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
                             "dim",
                         )
                     )
-                    print(
-                        colorize(
-                            '    desloppify plan triage --stage enrich --report "..."',
-                            "dim",
-                        )
-                    )
                 elif next_stage == "commit":
                     print(
                         colorize(
                             "  Enrich is done. Finalize the execution plan:",
                             "yellow",
-                        )
-                    )
-                    print(
-                        colorize(
-                            '    desloppify plan triage --complete --strategy "..."',
-                            "dim",
                         )
                     )
 

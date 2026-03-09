@@ -77,6 +77,33 @@ def _prune_subjective_ids(
         pruned.append(fid)
 
 
+def _skipped_subjective_ids(plan: PlanModel) -> set[str]:
+    """Return subjective IDs that are currently skipped in the plan."""
+    skipped = plan.get("skipped", {})
+    if not isinstance(skipped, dict):
+        return set()
+    return {
+        str(fid)
+        for fid in skipped
+        if isinstance(fid, str) and fid.startswith(SUBJECTIVE_PREFIX)
+    }
+
+
+def _prune_skipped_subjective_ids(
+    order: list[str],
+    *,
+    skipped_ids: set[str],
+    pruned: list[str],
+) -> None:
+    """Repair invalid overlap by removing skipped subjective IDs from queue order."""
+    if not skipped_ids:
+        return
+    to_remove = [fid for fid in order if fid in skipped_ids]
+    for fid in to_remove:
+        order.remove(fid)
+        pruned.append(fid)
+
+
 def _inject_subjective_ids(
     order: list[str],
     *,
@@ -122,13 +149,31 @@ def sync_unscored_dimensions(
         state, subjective_prefix=SUBJECTIVE_PREFIX,
     )
     order: list[str] = plan["queue_order"]
+    skipped_ids = _skipped_subjective_ids(plan)
+
+    # Unscored dimensions have never been reviewed — a permanent skip on a
+    # placeholder is premature (the scoring pipeline needs actual scores).
+    # Clear any skip entries so they resurface for initial review.
+    skipped_dict = plan.get("skipped", {})
+    if isinstance(skipped_dict, dict):
+        for sid in sorted(unscored_ids & skipped_ids):
+            skipped_dict.pop(sid, None)
+            result.resurfaced.append(sid)
+        skipped_ids -= unscored_ids
+
+    # Keep queue/skipped invariants healthy even if an old plan contains overlap.
+    _prune_skipped_subjective_ids(order, skipped_ids=skipped_ids, pruned=result.pruned)
 
     # --- Cleanup: prune subjective IDs that are no longer unscored --------
     # Only prune IDs that are neither unscored nor stale (stale sync owns those).
     _prune_subjective_ids(order, keep_ids=unscored_ids | stale_ids, pruned=result.pruned)
 
     # --- Inject: append unscored IDs to back of queue ---------------------
-    _inject_subjective_ids(order, inject_ids=unscored_ids, injected=result.injected)
+    _inject_subjective_ids(
+        order,
+        inject_ids=unscored_ids - skipped_ids,
+        injected=result.injected,
+    )
 
     return result
 
@@ -162,9 +207,13 @@ def sync_stale_dimensions(
         state, subjective_prefix=SUBJECTIVE_PREFIX,
     )
     under_target_ids = current_under_target_ids(state)
-    injectable_ids = stale_ids | under_target_ids
+    skipped_ids = _skipped_subjective_ids(plan)
+    injectable_ids = (stale_ids | under_target_ids) - skipped_ids
     unscored_ids = current_unscored_ids(state)
     order: list[str] = plan["queue_order"]
+
+    # Keep queue/skipped invariants healthy even if an old plan contains overlap.
+    _prune_skipped_subjective_ids(order, skipped_ids=skipped_ids, pruned=result.pruned)
 
     objective_backlog = has_objective_backlog(state, policy)
 

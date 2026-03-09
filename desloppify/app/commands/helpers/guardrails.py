@@ -9,6 +9,8 @@ from desloppify.app.commands.helpers.display import short_issue_id
 from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS, CommandError
 from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import (
+    TRIAGE_CMD_RUN_STAGES_CLAUDE,
+    TRIAGE_CMD_RUN_STAGES_CODEX,
     compute_new_issue_ids,
     is_triage_stale,
     load_plan,
@@ -66,7 +68,8 @@ def triage_guardrail_messages(
     if result.new_ids:
         messages.append(
             f"{len(result.new_ids)} new review issue(s) not yet triaged."
-            " Run `desloppify plan triage` to incorporate."
+            " Run the staged triage runner to incorporate them "
+            f"(`{TRIAGE_CMD_RUN_STAGES_CODEX}` or `{TRIAGE_CMD_RUN_STAGES_CLAUDE}`)."
         )
 
     if result._plan is not None:
@@ -118,7 +121,9 @@ def require_triage_current_or_exit(
         if len(new_ids) > 5:
             lines.append(f"    ... and {len(new_ids) - 5} more")
     lines.append("")
-    lines.append("  NEXT STEP: desloppify plan triage")
+    lines.append(f"  NEXT STEP (Codex):  {TRIAGE_CMD_RUN_STAGES_CODEX}")
+    lines.append(f"  NEXT STEP (Claude): {TRIAGE_CMD_RUN_STAGES_CLAUDE}")
+    lines.append("  Manual fallback:    desloppify plan triage")
     lines.append("  (Review new issues, then either --confirm-existing or re-plan.)")
     lines.append("")
     lines.append("  View new items:  desloppify plan queue --sort recent")

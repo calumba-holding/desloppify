@@ -7,6 +7,10 @@ from typing import TYPE_CHECKING
 from desloppify.app.commands.helpers.display import short_issue_id
 from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.base.output.terminal import colorize
+from desloppify.engine.plan import (
+    TRIAGE_CMD_RUN_STAGES_CLAUDE,
+    TRIAGE_CMD_RUN_STAGES_CODEX,
+)
 
 if TYPE_CHECKING:
     from desloppify.engine.plan import ReviewImportSyncResult
@@ -31,7 +35,10 @@ def _print_review_import_sync(state: dict, result: ReviewImportSyncResult) -> No
     print(colorize("  View queue:            desloppify plan queue", "dim"))
     print(colorize("  View newest first:     desloppify plan queue --sort recent", "dim"))
     print()
-    print(colorize("  NEXT STEP:  desloppify plan triage", "yellow"))
+    print(colorize("  NEXT STEP:", "yellow"))
+    print(colorize(f"    Codex:  {TRIAGE_CMD_RUN_STAGES_CODEX}", "yellow"))
+    print(colorize(f"    Claude: {TRIAGE_CMD_RUN_STAGES_CLAUDE}", "yellow"))
+    print(colorize("    Manual dashboard: desloppify plan triage", "dim"))
     print(colorize(
         "  (Review new issues and decide whether to re-plan or accept current queue.)",
         "dim",

@@ -23,6 +23,7 @@ from desloppify.app.commands.plan.override_misc import (
 )
 from desloppify.app.commands.plan.override_resolve_cmd import cmd_plan_resolve
 from desloppify.app.commands.plan.override_skip import cmd_plan_skip, cmd_plan_unskip
+from desloppify.app.commands.plan.policy_cmd import cmd_policy_dispatch
 from desloppify.app.commands.plan.queue_render import cmd_plan_queue
 from desloppify.app.commands.plan.reorder_handlers import cmd_plan_reorder
 from desloppify.app.commands.plan.triage_handlers import cmd_plan_triage
@@ -194,6 +195,7 @@ _PLAN_ACTION_HANDLERS = {
     "triage": cmd_plan_triage,
     "scan-gate": cmd_plan_scan_gate,
     "commit-log": cmd_commit_log_dispatch,
+    "policy": cmd_policy_dispatch,
 }
 
 

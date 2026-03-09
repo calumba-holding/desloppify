@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from desloppify.app.commands.helpers.runtime import CommandRuntime, command_runtime
-from desloppify.engine._plan.schema import PlanModel
 from desloppify.engine._state.schema import StateModel
 from desloppify.engine.plan import (
+    PlanModel,
     TriageInput,
     append_log_entry,
     build_triage_prompt,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TypedDict
 
+from desloppify.engine._plan.refresh_lifecycle import postflight_scan_pending
 from desloppify.engine._work_queue.context import QueueContext
 from desloppify.engine._work_queue.helpers import (
     ALL_STATUSES,
@@ -275,15 +276,15 @@ def _empty_queue_fallback(plan: dict | None) -> list[WorkQueueItem]:
     deferred_item = build_deferred_disposition_item(plan)
     if deferred_item is not None:
         items.append(deferred_item)
+        return items
 
-    plan_scores = plan.get("plan_start_scores", {})
-    if plan_scores.get("strict") is None:
+    if not postflight_scan_pending(plan):
         return items
 
     items.append({
         "id": "workflow::run-scan",
         "kind": "workflow_action",
-        "summary": "Queue cleared \u2014 run scan to finalize and reveal your updated score.",
+        "summary": "Queue cleared - run scan to refresh and surface follow-up review work.",
         "primary_command": "desloppify scan",
         "file": "",
         "detector": "workflow",

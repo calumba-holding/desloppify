@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from desloppify.base.output.terminal import colorize
-from desloppify.engine._plan.triage_playbook import TRIAGE_CMD_ORGANIZE
+from desloppify.engine.plan import TRIAGE_CMD_ORGANIZE
 
 from ._stage_validation_enrich_checks import _underspecified_steps
 from .helpers import manual_clusters_with_issues

@@ -9,12 +9,8 @@ from desloppify.base.discovery.paths import get_project_root
 from desloppify.engine.plan import TriageInput, build_triage_prompt
 
 from ..services import TriageServices, default_triage_services
-from .stage_prompts_instructions import (
-    _CLI_REFERENCE,
-    _PREAMBLE,
-    _STAGES,
-    _STAGE_INSTRUCTIONS,
-)
+from .stage_prompts_instruction_blocks import _STAGE_INSTRUCTIONS
+from .stage_prompts_instruction_shared import _CLI_REFERENCE, _PREAMBLE, _STAGES
 from .stage_prompts_observe import (
     _observe_batch_instructions,
     build_observe_batch_prompt,

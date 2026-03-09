@@ -10,6 +10,7 @@ def build_sense_check_content_prompt(
     cluster_name: str,
     plan: dict,
     repo_root: Path,
+    policy_block: str = "",
 ) -> str:
     """Build a content-verification prompt for a single cluster."""
     cluster = plan.get("clusters", {}).get(cluster_name, {})
@@ -57,6 +58,9 @@ def build_sense_check_content_prompt(
         "   If a step is net-negative, recommend removing it or simplifying the approach.\n"
         "   If the entire cluster is net-negative, say so clearly in your report.\n"
     )
+
+    if policy_block:
+        parts.append(policy_block)
 
     parts.append(
         "## How to fix\n"

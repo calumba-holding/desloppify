@@ -13,6 +13,7 @@ from desloppify.engine.plan import (
     add_uncommitted_issues,
     append_log_entry,
     auto_complete_steps,
+    clear_postflight_scan_completion,
     has_living_plan,
     load_plan,
     purge_ids,
@@ -88,6 +89,7 @@ def update_living_plan_after_resolve(
             add_uncommitted_issues(plan, all_resolved)
         elif args.status == "open":
             purge_uncommitted_ids(plan, all_resolved)
+        clear_postflight_scan_completion(plan, issue_ids=all_resolved)
         save_plan(plan)
         if purged:
             print(colorize(f"  Plan updated: {purged} item(s) removed from queue.", "dim"))

@@ -80,6 +80,32 @@ class TestCmdNextOutput:
         out = capsys.readouterr().out
         assert "No scans yet. Run: desloppify scan" in out
 
+    def test_empty_plan_is_still_passed_into_queue_context(self, monkeypatch, capsys):
+        _patch_common(
+            monkeypatch,
+            state={
+                "issues": {},
+                "dimension_scores": {},
+                "overall_score": 90.0,
+                "objective_score": 90.0,
+                "strict_score": 90.0,
+                "scan_path": ".",
+            },
+        )
+        captured = {}
+
+        def _build_queue(_state, *, options=None):
+            captured["plan"] = options.context.plan
+            return {"items": [], "total": 0}
+
+        monkeypatch.setattr(next_mod, "write_query", lambda _payload: None)
+        monkeypatch.setattr(next_mod, "build_work_queue", _build_queue)
+
+        cmd_next(_args())
+        capsys.readouterr()
+
+        assert captured["plan"] == {}
+
     def test_subjective_focus_and_review_prepare_hint(self, monkeypatch, capsys):
         _patch_common(
             monkeypatch,

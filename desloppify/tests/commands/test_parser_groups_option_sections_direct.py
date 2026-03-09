@@ -4,8 +4,35 @@ from __future__ import annotations
 
 import argparse
 
-import desloppify.app.cli_support.parser_groups_admin_review_options as review_opts_mod
-import desloppify.app.cli_support.parser_groups_plan_impl_sections as plan_sections_mod
+from desloppify.app.cli_support.parser_groups_admin_review_options_batch import (
+    _add_batch_execution_options,
+)
+from desloppify.app.cli_support.parser_groups_admin_review_options_core import (
+    _add_core_options,
+)
+from desloppify.app.cli_support.parser_groups_admin_review_options_external import (
+    _add_external_review_options,
+)
+from desloppify.app.cli_support.parser_groups_admin_review_options_trust_post import (
+    _add_trust_options,
+)
+from desloppify.app.cli_support.parser_groups_plan_impl_sections_annotations import (
+    _add_annotation_subparsers,
+    _add_resolve_subparser,
+    _add_skip_subparsers,
+)
+from desloppify.app.cli_support.parser_groups_plan_impl_sections_cluster import (
+    _add_cluster_subparser,
+)
+from desloppify.app.cli_support.parser_groups_plan_impl_sections_queue_reorder import (
+    _add_queue_subparser,
+    _add_reorder_subparser,
+)
+from desloppify.app.cli_support.parser_groups_plan_impl_sections_triage_commit_scan import (
+    _add_commit_log_subparser,
+    _add_scan_gate_subparser,
+    _add_triage_subparser,
+)
 
 
 def _build_plan_parser() -> tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
@@ -18,10 +45,10 @@ def _build_plan_parser() -> tuple[argparse.ArgumentParser, argparse._SubParsersA
 
 def test_review_option_groups_register_expected_flags() -> None:
     parser = argparse.ArgumentParser(prog="desloppify review")
-    review_opts_mod._add_core_options(parser)
-    review_opts_mod._add_external_review_options(parser)
-    review_opts_mod._add_batch_execution_options(parser)
-    review_opts_mod._add_trust_options(parser)
+    _add_core_options(parser)
+    _add_external_review_options(parser)
+    _add_batch_execution_options(parser)
+    _add_trust_options(parser)
 
     defaults = parser.parse_args([])
     assert defaults.retrospective_max_issues == 30
@@ -109,8 +136,8 @@ def test_review_option_groups_register_expected_flags() -> None:
 
 def test_plan_queue_and_reorder_subparsers_parse_expected_shapes() -> None:
     parser, plan_sub = _build_plan_parser()
-    plan_sections_mod._add_queue_subparser(plan_sub)
-    plan_sections_mod._add_reorder_subparser(plan_sub)
+    _add_queue_subparser(plan_sub)
+    _add_reorder_subparser(plan_sub)
 
     queue_args = parser.parse_args(
         [
@@ -150,9 +177,9 @@ def test_plan_queue_and_reorder_subparsers_parse_expected_shapes() -> None:
 
 def test_plan_annotation_skip_and_resolve_parsers() -> None:
     parser, plan_sub = _build_plan_parser()
-    plan_sections_mod._add_annotation_subparsers(plan_sub)
-    plan_sections_mod._add_skip_subparsers(plan_sub)
-    plan_sections_mod._add_resolve_subparser(plan_sub)
+    _add_annotation_subparsers(plan_sub)
+    _add_skip_subparsers(plan_sub)
+    _add_resolve_subparser(plan_sub)
 
     describe_args = parser.parse_args(
         ["plan", "describe", "unused::*", "security", "prioritize now"]
@@ -210,10 +237,10 @@ def test_plan_annotation_skip_and_resolve_parsers() -> None:
 
 def test_plan_cluster_triage_commit_and_scan_gate_subparsers() -> None:
     parser, plan_sub = _build_plan_parser()
-    plan_sections_mod._add_cluster_subparser(plan_sub)
-    plan_sections_mod._add_triage_subparser(plan_sub)
-    plan_sections_mod._add_commit_log_subparser(plan_sub)
-    plan_sections_mod._add_scan_gate_subparser(plan_sub)
+    _add_cluster_subparser(plan_sub)
+    _add_triage_subparser(plan_sub)
+    _add_commit_log_subparser(plan_sub)
+    _add_scan_gate_subparser(plan_sub)
 
     cluster_update = parser.parse_args(
         [

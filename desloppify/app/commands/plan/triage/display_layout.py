@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 
 from desloppify.app.commands.helpers.display import short_issue_id
-from desloppify.engine._plan.triage_playbook import (
+from desloppify.base.output.terminal import colorize
+from desloppify.engine.plan import (
     TRIAGE_CMD_CLUSTER_ADD,
     TRIAGE_CMD_CLUSTER_CREATE,
     TRIAGE_CMD_CLUSTER_ENRICH_COMPACT,
@@ -16,21 +17,45 @@ from desloppify.engine._plan.triage_playbook import (
     TRIAGE_CMD_OBSERVE,
     TRIAGE_CMD_ORGANIZE,
     TRIAGE_CMD_REFLECT,
+    TRIAGE_CMD_RUN_STAGES_CLAUDE,
+    TRIAGE_CMD_RUN_STAGES_CODEX,
+    triage_runner_commands,
 )
-from desloppify.base.output.terminal import colorize
 
-from .helpers import find_cluster_for, manual_clusters_with_issues, open_review_ids_from_state, triage_coverage
 from .display_primitives import print_stage_progress
+from .helpers import (
+    find_cluster_for,
+    manual_clusters_with_issues,
+    open_review_ids_from_state,
+    triage_coverage,
+)
 from .stage_helpers import unenriched_clusters
+
+
+def _print_runner_paths(
+    *,
+    only_stages: str | None = None,
+    manual_fallback: str | None = None,
+    intro: str = "  Preferred runners:",
+) -> None:
+    print(colorize(intro, "yellow"))
+    for label, command in triage_runner_commands(only_stages=only_stages):
+        print(f"    {label}:  {command}")
+    if manual_fallback:
+        print(colorize(f"  Manual fallback: {manual_fallback}", "dim"))
 
 
 def print_dashboard_header(si: object, stages: dict, meta: dict, plan: dict) -> None:
     """Print the header section: title, open issues count, stage progress, overall status."""
-    print(colorize("  Epic triage — manual", "bold"))
+    print(colorize("  Epic triage", "bold"))
     print(colorize("  " + "─" * 60, "dim"))
     print(f"  Open review issues: {len(si.open_issues)}")
     print(colorize("  Goal: identify contradictions, resolve them, then group the coherent", "cyan"))
     print(colorize("  remainder into clusters by root cause with action steps and priorities.", "cyan"))
+    print(colorize("  Preferred: staged runner workflow (Codex or Claude).", "cyan"))
+    print(colorize(f"    Codex:  {TRIAGE_CMD_RUN_STAGES_CODEX}", "dim"))
+    print(colorize(f"    Claude: {TRIAGE_CMD_RUN_STAGES_CLAUDE}", "dim"))
+    print(colorize("  Manual stage commands below are fallback/debug paths.", "dim"))
     if si.existing_epics:
         print(f"  Existing epics: {len(si.existing_epics)}")
     if si.new_since_last:
@@ -69,21 +94,33 @@ def print_action_guidance(stages: dict, meta: dict, si: object, plan: dict) -> N
         print('    desloppify plan triage --confirm-existing --note "..." --strategy "same" --confirmed "I have reviewed..."')
         print()
         print(colorize("  To re-prioritize and restructure:", "cyan"))
-        print(f"    {TRIAGE_CMD_OBSERVE}")
+        print(f"    Codex:  {TRIAGE_CMD_RUN_STAGES_CODEX}")
+        print(f"    Claude: {TRIAGE_CMD_RUN_STAGES_CLAUDE}")
+        print(colorize(f"    Manual fallback: {TRIAGE_CMD_OBSERVE}", "dim"))
     elif "observe" not in stages:
-        print(colorize("  Next step:", "yellow"))
-        print(f"    {TRIAGE_CMD_OBSERVE}")
+        _print_runner_paths(
+            only_stages="observe",
+            manual_fallback=TRIAGE_CMD_OBSERVE,
+            intro="  Next step:",
+        )
         print(colorize("    (themes, root causes, contradictions between issues — NOT a list of IDs)", "dim"))
     elif "reflect" not in stages:
-        print(colorize("  Next step: use the completed work and patterns below to write your reflect report.", "yellow"))
-        print(f"    {TRIAGE_CMD_REFLECT}")
+        _print_runner_paths(
+            only_stages="reflect",
+            manual_fallback=TRIAGE_CMD_REFLECT,
+            intro="  Next step: use the completed work and patterns below to write your reflect report.",
+        )
         print(colorize("    (Contradictions, recurring patterns, which direction to take, what to defer)", "dim"))
     elif "organize" not in stages:
         gaps = unenriched_clusters(plan)
         manual = manual_clusters_with_issues(plan)
 
         if not manual:
-            print(colorize("  Next steps:", "yellow"))
+            _print_runner_paths(
+                only_stages="organize",
+                manual_fallback=TRIAGE_CMD_ORGANIZE,
+                intro="  Next steps:",
+            )
             print("    0. Defer contradictory issues: `desloppify plan skip <hash>`")
             print(f"    1. Create clusters:  {TRIAGE_CMD_CLUSTER_CREATE}")
             print(f"    2. Add issues:     {TRIAGE_CMD_CLUSTER_ADD}")
@@ -97,7 +134,11 @@ def print_action_guidance(stages: dict, meta: dict, si: object, plan: dict) -> N
             print(colorize(f"    Then: {TRIAGE_CMD_ORGANIZE}", "dim"))
         else:
             print(colorize("  All clusters enriched! Record the organize stage:", "green"))
-            print(f"    {TRIAGE_CMD_ORGANIZE}")
+            _print_runner_paths(
+                only_stages="organize",
+                manual_fallback=TRIAGE_CMD_ORGANIZE,
+                intro="  Preferred runner paths:",
+            )
 
         if meta.get("strategy_summary"):
             print()
@@ -110,11 +151,18 @@ def print_action_guidance(stages: dict, meta: dict, si: object, plan: dict) -> N
             print(colorize('    desloppify plan cluster update <name> --update-step N --detail "sub-details"', "dim"))
         else:
             print(colorize("  Steps look enriched. Record the enrich stage:", "green"))
-        print(f"    {TRIAGE_CMD_ENRICH}")
+        _print_runner_paths(
+            only_stages="enrich",
+            manual_fallback=TRIAGE_CMD_ENRICH,
+            intro="  Preferred runner paths:",
+        )
         print(colorize("  You can still reorganize: add/remove clusters, reorder items.", "dim"))
     else:
         print(colorize("  Ready to complete:", "green"))
-        print(f"    {TRIAGE_CMD_COMPLETE_VERBOSE}")
+        _print_runner_paths(
+            manual_fallback=TRIAGE_CMD_COMPLETE_VERBOSE,
+            intro="  Preferred runner paths:",
+        )
         print(colorize('    (use --strategy "same" to keep existing strategy)', "dim"))
 
 

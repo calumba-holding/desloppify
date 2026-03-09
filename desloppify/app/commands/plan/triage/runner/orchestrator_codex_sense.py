@@ -7,6 +7,7 @@ from pathlib import Path
 
 from desloppify.base.discovery.file_paths import safe_write_text
 from desloppify.base.output.terminal import colorize
+from desloppify.engine._plan.project_policy import load_policy, render_policy_block
 
 from ..helpers import manual_clusters_with_issues
 from .codex_runner import _output_file_has_text, run_triage_stage
@@ -41,11 +42,17 @@ def run_sense_check(
     print(colorize(f"\n  Sense-check: {total_content} content batches + 1 structure batch.", "bold"))
     _log(f"sense-check-parallel content_batches={total_content}")
 
+    policy = load_policy()
+    policy_text = render_policy_block(policy)
+
     tasks: dict[int, object] = {}
     batch_meta: list[tuple[str, Path]] = []
 
     for i, cluster_name in enumerate(clusters):
-        prompt = build_sense_check_content_prompt(cluster_name=cluster_name, plan=plan, repo_root=repo_root)
+        prompt = build_sense_check_content_prompt(
+            cluster_name=cluster_name, plan=plan, repo_root=repo_root,
+            policy_block=policy_text,
+        )
         prompt_file = prompts_dir / f"sense_check_content_{i}.md"
         safe_write_text(prompt_file, prompt)
 

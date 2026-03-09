@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from desloppify.app.commands.scan.workflow import ScanRuntime
 
 from desloppify import state as state_mod
 from desloppify.base.config import DEFAULT_TARGET_STRICT_SCORE
@@ -14,6 +17,7 @@ from desloppify.engine.plan import (
     append_log_entry,
     auto_cluster_issues,
     load_plan,
+    mark_postflight_scan_completed,
     reconcile_plan_after_scan,
     save_plan,
     sync_communicate_score_needed,
@@ -21,6 +25,9 @@ from desloppify.engine.plan import (
     sync_stale_dimensions,
     sync_triage_needed,
     sync_unscored_dimensions,
+)
+from desloppify.engine._work_queue.synthetic_workflow import (
+    build_deferred_disposition_item,
 )
 
 logger = logging.getLogger(__name__)
@@ -54,6 +61,13 @@ def _apply_plan_reconciliation(plan: dict[str, object], state: state_mod.StateMo
 def _sync_unscored_dimensions(plan: dict[str, object], state: state_mod.StateModel, sync_fn) -> bool:
     """Sync unscored subjective dimensions into the plan queue."""
     sync = sync_fn(plan, state)
+    if sync.resurfaced:
+        print(
+            colorize(
+                f"  Plan: {len(sync.resurfaced)} skipped subjective dimension(s) resurfaced — never reviewed.",
+                "yellow",
+            )
+        )
     if sync.injected:
         print(
             colorize(
@@ -123,6 +137,23 @@ def _seed_plan_start_scores(plan: dict[str, object], state: state_mod.StateModel
     return True
 
 
+def _has_objective_cycle(
+    state: state_mod.StateModel,
+    plan: dict[str, object],
+) -> bool | None:
+    """Return True when objective queue work exists and a cycle baseline should freeze."""
+    try:
+        from desloppify.app.commands.helpers.queue_progress import (
+            plan_aware_queue_breakdown,
+        )
+
+        breakdown = plan_aware_queue_breakdown(state, plan)
+    except PLAN_LOAD_EXCEPTIONS as exc:
+        log_best_effort_failure(logger, "compute queue breakdown for plan-start seeding", exc)
+        return None
+    return breakdown.objective_actionable > 0
+
+
 def _clear_plan_start_scores_if_queue_empty(
     state: state_mod.StateModel, plan: dict[str, object]
 ) -> bool:
@@ -150,8 +181,24 @@ def _clear_plan_start_scores_if_queue_empty(
     return True
 
 
+def _mark_postflight_scan_completed_if_ready(
+    state: state_mod.StateModel,
+    plan: dict[str, object],
+) -> bool:
+    """Record that the scan stage completed for the current empty-queue boundary."""
+    if build_deferred_disposition_item(plan) is not None:
+        return False
+    objective_cycle = _has_objective_cycle(state, plan)
+    if objective_cycle is not False:
+        return False
+    return mark_postflight_scan_completed(
+        plan,
+        scan_count=int(state.get("scan_count", 0) or 0),
+    )
+
+
 def _subjective_policy_context(
-    runtime: Any,
+    runtime: ScanRuntime,
     plan: dict[str, object],
 ) -> tuple[float, object, bool]:
     from desloppify.base.config import target_strict_score_from_config
@@ -291,19 +338,42 @@ def _sync_plan_start_scores_and_log(
     plan: dict[str, object],
     state: state_mod.StateModel,
 ) -> bool:
-    seeded = _seed_plan_start_scores(plan, state)
-    if seeded:
-        append_log_entry(plan, "seed_start_scores", actor="system", detail={})
+    objective_cycle = _has_objective_cycle(state, plan)
+    if objective_cycle is None:
+        return False
+    if objective_cycle:
+        seeded = _seed_plan_start_scores(plan, state)
+        if seeded:
+            append_log_entry(plan, "seed_start_scores", actor="system", detail={})
+        return seeded
+
+    existing = plan.get("plan_start_scores")
+    if isinstance(existing, dict) and existing.get("strict") is None and existing.get("reset"):
+        plan["plan_start_scores"] = {}
         return True
-    # Only clear scores that existed before this reconcile pass —
-    # never clear scores we just seeded in the same scan.
+
     cleared = _clear_plan_start_scores_if_queue_empty(state, plan)
     if cleared:
         append_log_entry(plan, "clear_start_scores", actor="system", detail={})
     return cleared
 
 
-def reconcile_plan_post_scan(runtime: Any) -> None:
+def _sync_postflight_scan_completion_and_log(
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+) -> bool:
+    changed = _mark_postflight_scan_completed_if_ready(state, plan)
+    if changed:
+        append_log_entry(
+            plan,
+            "complete_postflight_scan",
+            actor="system",
+            detail={"scan_count": int(state.get("scan_count", 0) or 0)},
+        )
+    return changed
+
+
+def reconcile_plan_post_scan(runtime: ScanRuntime) -> None:
     """Reconcile plan queue metadata and stale subjective review dimensions."""
     plan_path = runtime.state_path.parent / "plan.json" if runtime.state_path else None
     try:
@@ -348,10 +418,11 @@ def reconcile_plan_post_scan(runtime: Any) -> None:
         dirty = True
     if _sync_plan_start_scores_and_log(plan, runtime.state):
         dirty = True
+    if _sync_postflight_scan_completion_and_log(plan, runtime.state):
+        dirty = True
 
     if dirty:
         try:
             save_plan(plan, plan_path)
         except PLAN_LOAD_EXCEPTIONS as exc:
-            runtime.state["_plan_reconcile_save_failed"] = True
             logger.warning("Plan reconciliation save failed: %s", exc)

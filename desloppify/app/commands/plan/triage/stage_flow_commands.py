@@ -25,11 +25,9 @@ from .helpers import (
     print_cascade_clear_feedback,
 )
 from .services import TriageServices
-from .stage_flow_enrich_sense import (
+from .stage_flow_enrich import run_stage_enrich
+from .stage_flow_sense_check import (
     record_sense_check_stage as _record_sense_check_stage_impl,
-)
-from .stage_flow_enrich_sense import (
-    run_stage_enrich,
     run_stage_sense_check,
 )
 from .stage_flow_observe_reflect_organize import (

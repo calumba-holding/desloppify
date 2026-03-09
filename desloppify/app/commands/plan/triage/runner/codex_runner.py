@@ -7,7 +7,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from desloppify.app.runner.codex_process import (
+from desloppify.app.commands.review.runner_process import (
     CodexBatchRunnerDeps,
     codex_batch_command,
     run_codex_batch,

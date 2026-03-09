@@ -316,11 +316,15 @@ class TestSyncStaleDimensions:
 
 class TestSyncPlanStartScoresAndLog:
 
-    def test_seeds_and_appends_log(self):
+    def test_seeds_and_appends_log(self, monkeypatch):
         plan = empty_plan()
         state = _make_state(
             strict_score=85.0, overall_score=90.0,
             objective_score=88.0, verified_strict_score=80.0,
+        )
+        monkeypatch.setattr(
+            "desloppify.app.commands.helpers.queue_progress.plan_aware_queue_breakdown",
+            lambda s, p: SimpleNamespace(objective_actionable=2, queue_total=2),
         )
         changed = reconcile_mod._sync_plan_start_scores_and_log(plan, state)
         assert changed is True
@@ -346,6 +350,20 @@ class TestSyncPlanStartScoresAndLog:
         changed = reconcile_mod._sync_plan_start_scores_and_log(plan, state)
         assert changed is False
         assert plan["execution_log"] == []
+
+    def test_does_not_seed_when_only_postflight_work_remains(self, monkeypatch):
+        plan = empty_plan()
+        state = _make_state(
+            strict_score=85.0, overall_score=90.0,
+            objective_score=88.0, verified_strict_score=80.0,
+        )
+        monkeypatch.setattr(
+            "desloppify.app.commands.helpers.queue_progress.plan_aware_queue_breakdown",
+            lambda s, p: SimpleNamespace(objective_actionable=0, queue_total=1),
+        )
+        changed = reconcile_mod._sync_plan_start_scores_and_log(plan, state)
+        assert changed is False
+        assert plan["plan_start_scores"] == {}
 
     def test_clears_when_queue_empty(self, monkeypatch):
         plan = empty_plan()
@@ -453,6 +471,42 @@ class TestClearPlanStartScoresIfQueueEmpty:
 
 
 # ---------------------------------------------------------------------------
+# Tests: _sync_postflight_scan_completion_and_log
+# ---------------------------------------------------------------------------
+
+class TestSyncPostflightScanCompletionAndLog:
+
+    def test_marks_scan_complete_when_objective_queue_is_drained(self, monkeypatch):
+        plan = empty_plan()
+        state = _make_state(scan_count=7)
+
+        monkeypatch.setattr(
+            "desloppify.app.commands.helpers.queue_progress.plan_aware_queue_breakdown",
+            lambda s, p: SimpleNamespace(objective_actionable=0, queue_total=2),
+        )
+        changed = reconcile_mod._sync_postflight_scan_completion_and_log(plan, state)
+
+        assert changed is True
+        assert plan["refresh_state"]["postflight_scan_completed_at_scan_count"] == 7
+        log_actions = [entry["action"] for entry in plan["execution_log"]]
+        assert "complete_postflight_scan" in log_actions
+
+    def test_does_not_mark_complete_when_deferred_backlog_exists(self, monkeypatch):
+        plan = empty_plan()
+        plan["skipped"] = {"issue-1": {"kind": "temporary"}}
+        state = _make_state(scan_count=7)
+
+        monkeypatch.setattr(
+            "desloppify.app.commands.helpers.queue_progress.plan_aware_queue_breakdown",
+            lambda s, p: SimpleNamespace(objective_actionable=0, queue_total=1),
+        )
+        changed = reconcile_mod._sync_postflight_scan_completion_and_log(plan, state)
+
+        assert changed is False
+        assert plan["refresh_state"] == {}
+
+
+# ---------------------------------------------------------------------------
 # Tests: reconcile_plan_post_scan (full orchestration)
 # ---------------------------------------------------------------------------
 
@@ -479,10 +533,7 @@ class TestReconcilePlanPostScan:
         assert "issue-2" in saved[0]["queue_order"]
 
     def test_does_not_save_when_nothing_changed(self, monkeypatch):
-        """Plan with no actionable changes should not trigger a save.
-
-        Pre-populate communicate-score so sync does not re-inject it.
-        """
+        """Empty-boundary scans persist post-flight completion metadata once."""
         plan = empty_plan()
         plan["queue_order"] = ["workflow::communicate-score"]
         state = _make_state()
@@ -492,7 +543,8 @@ class TestReconcilePlanPostScan:
         monkeypatch.setattr(reconcile_mod, "save_plan", lambda p, _path=None: saved.append(p))
 
         reconcile_mod.reconcile_plan_post_scan(_runtime(state=state))
-        assert saved == []
+        assert len(saved) == 1
+        assert saved[0]["refresh_state"]["postflight_scan_completed_at_scan_count"] == 1
 
     def test_swallows_load_plan_exception(self, monkeypatch):
         monkeypatch.setattr(
@@ -517,7 +569,7 @@ class TestReconcilePlanPostScan:
         # Should not raise
         reconcile_mod.reconcile_plan_post_scan(_runtime(state=state))
 
-    def test_seeds_start_scores_on_empty_plan(self, monkeypatch):
+    def test_marks_postflight_scan_on_empty_plan(self, monkeypatch):
         plan = empty_plan()
         state = _make_state(
             strict_score=85.0, overall_score=90.0,
@@ -531,7 +583,8 @@ class TestReconcilePlanPostScan:
         reconcile_mod.reconcile_plan_post_scan(_runtime(state=state))
 
         assert len(saved) == 1
-        assert saved[0]["plan_start_scores"]["strict"] == 85.0
+        assert saved[0]["plan_start_scores"] == {}
+        assert saved[0]["refresh_state"]["postflight_scan_completed_at_scan_count"] == 1
 
     def test_superseded_issue_removed_from_clusters(self, monkeypatch):
         plan = empty_plan()
@@ -600,7 +653,7 @@ class TestReconcilePlanPostScan:
 
         assert len(saved) == 1
         assert "issue-1" in saved[0]["superseded"]
-        assert saved[0]["plan_start_scores"]["strict"] == 85.0
+        assert saved[0]["refresh_state"]["postflight_scan_completed_at_scan_count"] == 1
 
     def test_plan_path_derived_from_state_path(self, monkeypatch):
         plan = empty_plan()

@@ -49,6 +49,18 @@ def _subjective_state_sets(
     return stale_ids, under_target_ids, unscored_ids
 
 
+def _skipped_subjective_ids(plan: dict) -> set[str]:
+    """Return skipped subjective IDs so auto-clusters don't re-queue them."""
+    skipped = plan.get("skipped", {})
+    if not isinstance(skipped, dict):
+        return set()
+    return {
+        str(fid)
+        for fid in skipped
+        if isinstance(fid, str) and fid.startswith(SUBJECTIVE_PREFIX)
+    }
+
+
 def sync_subjective_clusters(
     plan: dict,
     state: StateModel,
@@ -64,10 +76,17 @@ def sync_subjective_clusters(
 ) -> int:
     """Sync unscored, stale, and under-target subjective dimension clusters."""
     changes = 0
+    skipped_subjective_ids = _skipped_subjective_ids(plan)
+    order = plan.get("queue_order", [])
+    if skipped_subjective_ids and isinstance(order, list):
+        overlap = [fid for fid in order if fid in skipped_subjective_ids]
+        for fid in overlap:
+            order.remove(fid)
+            changes += 1
 
     all_subjective_ids = sorted(
         fid
-        for fid in plan.get("queue_order", [])
+        for fid in order
         if fid.startswith(SUBJECTIVE_PREFIX)
     )
 
@@ -122,11 +141,12 @@ def sync_subjective_clusters(
         )
         changes += int(sync_result.changed)
 
-    under_target_queue_ids = sorted(under_target_ids)
+    under_target_queue_ids = sorted(
+        fid for fid in under_target_ids if fid not in skipped_subjective_ids
+    )
 
     prev_ut_cluster = clusters.get(_UNDER_TARGET_NAME, {})
     prev_ut_ids = set(prev_ut_cluster.get("issue_ids", []))
-    order = plan.get("queue_order", [])
     ut_prune = [
         fid
         for fid in prev_ut_ids
