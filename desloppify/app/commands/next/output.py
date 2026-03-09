@@ -25,74 +25,95 @@ def _serialize_cluster_member(member: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def serialize_item(item: Mapping[str, Any]) -> dict[str, Any]:
-    """Build a serializable output dict from a queue item."""
-    # Cluster meta-items get their own serialization
-    if item.get("kind") == "cluster":
-        members_raw = item.get("members", [])
-        serialized_members = [
-            _serialize_cluster_member(member)
-            for member in members_raw[:_CLUSTER_MEMBER_SAMPLE_LIMIT]
-        ]
-        member_count = int(item.get("member_count", len(members_raw)))
-        serialized_cluster: dict[str, Any] = {
-            "id": item.get("id"),
-            "kind": "cluster",
-            "action_type": item.get("action_type", "manual_fix"),
-            "summary": item.get("summary"),
-            "member_count": member_count,
-            "members": serialized_members,
-            "cluster_name": item.get("cluster_name", item.get("id")),
-            "cluster_auto": item.get("cluster_auto", True),
-            "detector": item.get("detector"),
-        }
-        if member_count > len(serialized_members):
-            serialized_cluster["members_truncated"] = True
-            serialized_cluster["members_sample_limit"] = _CLUSTER_MEMBER_SAMPLE_LIMIT
-        serialized_cluster["primary_command"] = item.get("primary_command")
-        if item.get("autofix_hint"):
-            serialized_cluster["autofix_hint"] = item["autofix_hint"]
-        action_steps = item.get("action_steps") or []
-        if action_steps:
-            serialized_cluster["action_steps"] = action_steps
-        return serialized_cluster
+def _serialize_cluster_item(item: Mapping[str, Any]) -> dict[str, Any]:
+    """Serialize cluster queue meta-items with sampled members."""
+    members_raw = item.get("members", [])
+    serialized_members = [
+        _serialize_cluster_member(member)
+        for member in members_raw[:_CLUSTER_MEMBER_SAMPLE_LIMIT]
+    ]
+    member_count = int(item.get("member_count", len(members_raw)))
+    serialized_cluster: dict[str, Any] = {
+        "id": item.get("id"),
+        "kind": "cluster",
+        "action_type": item.get("action_type", "manual_fix"),
+        "summary": item.get("summary"),
+        "member_count": member_count,
+        "members": serialized_members,
+        "cluster_name": item.get("cluster_name", item.get("id")),
+        "cluster_auto": item.get("cluster_auto", True),
+        "detector": item.get("detector"),
+        "primary_command": item.get("primary_command"),
+    }
+    if member_count > len(serialized_members):
+        serialized_cluster["members_truncated"] = True
+        serialized_cluster["members_sample_limit"] = _CLUSTER_MEMBER_SAMPLE_LIMIT
 
-    serialized: dict[str, Any] = {}
-    serialized["id"] = item.get("id")
-    serialized["kind"] = item.get("kind", "issue")
-    serialized["confidence"] = item.get("confidence")
-    serialized["detector"] = item.get("detector")
-    serialized["file"] = item.get("file")
-    serialized["summary"] = item.get("summary")
-    serialized["detail"] = item.get("detail", {})
-    serialized["status"] = item.get("status")
-    serialized["primary_command"] = item.get("primary_command")
+    autofix_hint = item.get("autofix_hint")
+    if autofix_hint:
+        serialized_cluster["autofix_hint"] = autofix_hint
+    action_steps = item.get("action_steps") or []
+    if action_steps:
+        serialized_cluster["action_steps"] = action_steps
+    return serialized_cluster
 
-    # Workflow dependency state
-    if item.get("blocked_by"):
-        serialized["blocked_by"] = item["blocked_by"]
+
+def _serialize_issue_item_base(item: Mapping[str, Any]) -> dict[str, Any]:
+    """Serialize core issue fields shared across output modes."""
+    return {
+        "id": item.get("id"),
+        "kind": item.get("kind", "issue"),
+        "confidence": item.get("confidence"),
+        "detector": item.get("detector"),
+        "file": item.get("file"),
+        "summary": item.get("summary"),
+        "detail": item.get("detail", {}),
+        "status": item.get("status"),
+        "primary_command": item.get("primary_command"),
+    }
+
+
+def _add_workflow_state(
+    serialized: dict[str, Any],
+    item: Mapping[str, Any],
+) -> None:
+    """Attach workflow and explanation metadata."""
+    blocked_by = item.get("blocked_by")
+    if blocked_by:
+        serialized["blocked_by"] = blocked_by
     if item.get("is_blocked"):
         serialized["is_blocked"] = True
-
     explain = item.get("explain")
     if explain is not None:
         serialized["explain"] = explain
 
-    # Plan metadata
-    if item.get("queue_position"):
-        serialized["queue_position"] = item["queue_position"]
-    if item.get("plan_description"):
-        serialized["plan_description"] = item["plan_description"]
-    if item.get("plan_note"):
-        serialized["plan_note"] = item["plan_note"]
-    if item.get("plan_cluster"):
-        serialized["plan_cluster"] = item["plan_cluster"]
+
+def _add_plan_metadata(
+    serialized: dict[str, Any],
+    item: Mapping[str, Any],
+) -> None:
+    """Attach queue and plan metadata fields when present."""
+    for key in ("queue_position", "plan_description", "plan_note", "plan_cluster"):
+        value = item.get(key)
+        if value:
+            serialized[key] = value
+
     if item.get("plan_skipped"):
         serialized["plan_skipped"] = True
         serialized["plan_skip_kind"] = item.get("plan_skip_kind", "temporary")
-        if item.get("plan_skip_reason"):
-            serialized["plan_skip_reason"] = item["plan_skip_reason"]
+        skip_reason = item.get("plan_skip_reason")
+        if skip_reason:
+            serialized["plan_skip_reason"] = skip_reason
 
+
+def serialize_item(item: Mapping[str, Any]) -> dict[str, Any]:
+    """Build a serializable output dict from a queue item."""
+    if item.get("kind") == "cluster":
+        return _serialize_cluster_item(item)
+
+    serialized = _serialize_issue_item_base(item)
+    _add_workflow_state(serialized, item)
+    _add_plan_metadata(serialized, item)
     return serialized
 
 
