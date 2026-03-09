@@ -4,22 +4,29 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shlex
+import sys
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+import desloppify
 from desloppify.app.commands.review.batches_runtime import make_run_log_writer
 from desloppify.base.discovery.file_paths import safe_write_text
 from desloppify.base.discovery.paths import get_project_root
+from desloppify.base.exception_sets import CommandError
 from desloppify.base.output.terminal import colorize
 
+from .._stage_validation import _validate_reflect_issue_accounting
 from ..services import TriageServices, default_triage_services
 from .orchestrator_codex_observe import run_observe
 from .orchestrator_codex_sense import run_sense_check
 from .orchestrator_common import STAGES, ensure_triage_started, run_stamp
 from .stage_prompts import build_stage_prompt
+from .stage_prompts_instruction_shared import PromptMode
 from .stage_validation import build_auto_attestation, validate_stage
 
 
@@ -52,38 +59,24 @@ def _print_not_finalized_message(reason: str) -> None:
     )
 
 
+def _load_prior_reports_from_plan(plan: dict) -> dict[str, str]:
+    """Seed prior stage reports from the existing live triage state."""
+    stages = plan.get("epic_triage_meta", {}).get("triage_stages", {})
+    prior_reports: dict[str, str] = {}
+    for stage in STAGES:
+        report = stages.get(stage, {}).get("report", "")
+        if report:
+            prior_reports[stage] = report
+    return prior_reports
+
+
 @dataclass(frozen=True)
 class StageHandler:
     """Per-stage execution/record hooks for the codex triage pipeline."""
 
     run_parallel: Callable[..., tuple[bool | None, str | None]] | None = None
     record_report: Callable[[str, argparse.Namespace, TriageServices], None] | None = None
-
-
-def _run_observe_parallel(
-    *,
-    si: dict,
-    plan: dict,
-    repo_root: Path,
-    prompts_dir: Path,
-    output_dir: Path,
-    logs_dir: Path,
-    timeout_seconds: int,
-    dry_run: bool,
-    append_run_log,
-) -> tuple[bool | None, str | None]:
-    del plan
-    return run_observe(
-        si=si,
-        repo_root=repo_root,
-        prompts_dir=prompts_dir,
-        output_dir=output_dir,
-        logs_dir=logs_dir,
-        timeout_seconds=timeout_seconds,
-        dry_run=dry_run,
-        append_run_log=append_run_log,
-    )
-
+    prompt_mode: PromptMode = "output_only"
 
 def _record_observe_report(
     report: str,
@@ -100,29 +93,19 @@ def _record_observe_report(
     cmd_stage_observe(record_args, services=services)
 
 
-def _run_sense_check_parallel(
-    *,
-    si: dict,
-    plan: dict,
-    repo_root: Path,
-    prompts_dir: Path,
-    output_dir: Path,
-    logs_dir: Path,
-    timeout_seconds: int,
-    dry_run: bool,
-    append_run_log,
-) -> tuple[bool | None, str | None]:
-    del si
-    return run_sense_check(
-        plan=plan,
-        repo_root=repo_root,
-        prompts_dir=prompts_dir,
-        output_dir=output_dir,
-        logs_dir=logs_dir,
-        timeout_seconds=timeout_seconds,
-        dry_run=dry_run,
-        append_run_log=append_run_log,
+def _record_reflect_report(
+    report: str,
+    args: argparse.Namespace,
+    services: TriageServices,
+) -> None:
+    from ..stage_flow_commands import cmd_stage_reflect
+
+    record_args = argparse.Namespace(
+        stage="reflect",
+        report=report,
+        state=getattr(args, "state", None),
     )
+    cmd_stage_reflect(record_args, services=services)
 
 
 def _record_sense_check_report(
@@ -142,14 +125,97 @@ def _record_sense_check_report(
 
 _STAGE_HANDLERS: dict[str, StageHandler] = {
     "observe": StageHandler(
-        run_parallel=_run_observe_parallel,
+        run_parallel=lambda **kwargs: run_observe(
+            si=kwargs["si"],
+            repo_root=kwargs["repo_root"],
+            prompts_dir=kwargs["prompts_dir"],
+            output_dir=kwargs["output_dir"],
+            logs_dir=kwargs["logs_dir"],
+            timeout_seconds=kwargs["timeout_seconds"],
+            dry_run=kwargs["dry_run"],
+            append_run_log=kwargs["append_run_log"],
+        ),
         record_report=_record_observe_report,
     ),
+    "reflect": StageHandler(
+        record_report=_record_reflect_report,
+    ),
+    "organize": StageHandler(
+        prompt_mode="self_record",
+    ),
+    "enrich": StageHandler(
+        prompt_mode="self_record",
+    ),
     "sense-check": StageHandler(
-        run_parallel=_run_sense_check_parallel,
+        run_parallel=lambda **kwargs: run_sense_check(
+            plan=kwargs["plan"],
+            repo_root=kwargs["repo_root"],
+            prompts_dir=kwargs["prompts_dir"],
+            output_dir=kwargs["output_dir"],
+            logs_dir=kwargs["logs_dir"],
+            timeout_seconds=kwargs["timeout_seconds"],
+            dry_run=kwargs["dry_run"],
+            append_run_log=kwargs["append_run_log"],
+        ),
         record_report=_record_sense_check_report,
     ),
 }
+
+
+def _write_desloppify_cli_helper(run_dir: Path) -> Path:
+    """Create an exact CLI wrapper so codex subagents use this checkout + interpreter."""
+    package_root = Path(desloppify.__file__).resolve().parent.parent
+    script_path = run_dir / "run_desloppify.sh"
+    script = (
+        "#!/bin/sh\n"
+        f"export PYTHONPATH={shlex.quote(str(package_root))}${{PYTHONPATH:+:$PYTHONPATH}}\n"
+        f"exec {shlex.quote(sys.executable)} -m desloppify.cli \"$@\"\n"
+    )
+    safe_write_text(script_path, script)
+    os.chmod(script_path, 0o755)
+    return script_path
+
+
+def _read_stage_output(output_file: Path) -> str:
+    """Return stripped stage output text, or an empty string when unreadable."""
+    try:
+        return output_file.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def _preflight_stage(
+    *,
+    stage: str,
+    plan: dict,
+    si,
+    append_run_log,
+) -> tuple[bool, str | None]:
+    """Fail fast when a requested stage has invalid upstream prerequisites."""
+    if stage != "organize":
+        return True, None
+    reflect_report = str(
+        plan.get("epic_triage_meta", {})
+        .get("triage_stages", {})
+        .get("reflect", {})
+        .get("report", "")
+    )
+    accounting_ok, _cited, missing_ids, duplicate_ids = _validate_reflect_issue_accounting(
+        report=reflect_report,
+        valid_ids=set(getattr(si, "open_issues", {}).keys()),
+    )
+    if accounting_ok:
+        return True, None
+    reason_parts: list[str] = []
+    if missing_ids:
+        reason_parts.append(f"missing={len(missing_ids)}")
+    if duplicate_ids:
+        reason_parts.append(f"duplicates={len(duplicate_ids)}")
+    reason = "reflect_accounting_invalid"
+    if reason_parts:
+        reason = f"{reason}({' '.join(reason_parts)})"
+    append_run_log(f"stage-preflight-failed stage={stage} reason={reason}")
+    return False, reason
 
 
 def _execute_stage(
@@ -164,6 +230,7 @@ def _execute_stage(
     prompts_dir: Path,
     output_dir: Path,
     logs_dir: Path,
+    cli_command: str,
     stage_start: float,
     timeout_seconds: int,
     dry_run: bool,
@@ -174,6 +241,27 @@ def _execute_stage(
 
     handler = _STAGE_HANDLERS.get(stage)
     used_parallel = False
+    prompt_mode = handler.prompt_mode if handler is not None else "output_only"
+
+    preflight_ok, preflight_reason = _preflight_stage(
+        stage=stage,
+        plan=plan,
+        si=si,
+        append_run_log=append_run_log,
+    )
+    if not preflight_ok:
+        elapsed = int(time.monotonic() - stage_start)
+        print(
+            colorize(
+                f"  Stage {stage}: blocked before launch ({preflight_reason}).",
+                "red",
+            )
+        )
+        return "failed", {
+            "status": "failed",
+            "elapsed_seconds": elapsed,
+            "error": preflight_reason,
+        }
 
     if handler and handler.run_parallel is not None:
         parallel_ok, merged_report = handler.run_parallel(
@@ -204,7 +292,14 @@ def _execute_stage(
             return "failed", {"status": "failed", "elapsed_seconds": elapsed}
 
     if not used_parallel:
-        prompt = build_stage_prompt(stage, si, prior_reports, repo_root=repo_root)
+        prompt = build_stage_prompt(
+            stage,
+            si,
+            prior_reports,
+            repo_root=repo_root,
+            mode=prompt_mode,
+            cli_command=cli_command,
+        )
 
         prompt_file = prompts_dir / f"{stage}.md"
         safe_write_text(prompt_file, prompt)
@@ -249,6 +344,24 @@ def _execute_stage(
                 "exit_code": exit_code,
                 "elapsed_seconds": elapsed,
             }
+
+        if handler and handler.record_report is not None:
+            report = _read_stage_output(output_file)
+            if report:
+                handler.record_report(report, args, services)
+                append_run_log(
+                    f"stage-recorded stage={stage} elapsed={elapsed}s mode=orchestrator"
+                )
+            else:
+                print(colorize(f"  Stage {stage}: output file was empty after subprocess.", "red"))
+                append_run_log(
+                    f"stage-failed stage={stage} elapsed={elapsed}s reason=empty_stage_output"
+                )
+                return "failed", {
+                    "status": "failed",
+                    "elapsed_seconds": elapsed,
+                    "error": "empty_stage_output",
+                }
 
     return "ready", {}
 
@@ -389,6 +502,7 @@ def run_codex_pipeline(
 
     run_log_path = run_dir / "run.log"
     append_run_log = make_run_log_writer(run_log_path)
+    cli_helper = _write_desloppify_cli_helper(run_dir)
     append_run_log(
         f"run-start runner=codex stages={','.join(stages_to_run)} "
         f"timeout={timeout_seconds}s dry_run={dry_run}"
@@ -396,11 +510,12 @@ def run_codex_pipeline(
 
     print(colorize(f"  Run artifacts: {run_dir}", "dim"))
     print(colorize(f"  Live run log:  {run_log_path}", "dim"))
+    print(colorize(f"  CLI helper:    {cli_helper}", "dim"))
 
     runtime = resolved_services.command_runtime(args)
     state = runtime.state
 
-    prior_reports: dict[str, str] = {}
+    prior_reports = _load_prior_reports_from_plan(plan)
     stage_results: dict[str, dict] = {}
     pipeline_start = time.monotonic()
 
@@ -433,6 +548,7 @@ def run_codex_pipeline(
             prompts_dir=prompts_dir,
             output_dir=output_dir,
             logs_dir=logs_dir,
+            cli_command=str(cli_helper),
             stage_start=stage_start,
             timeout_seconds=timeout_seconds,
             dry_run=dry_run,
@@ -446,7 +562,10 @@ def run_codex_pipeline(
             write_triage_run_summary(
                 run_dir, stamp, stages_to_run, stage_results, append_run_log
             )
-            return
+            raise CommandError(
+                f"triage stage failed: {stage}. See {run_dir / 'run_summary.json'}",
+                exit_code=1,
+            )
 
         confirmed, confirm_result, report = _validate_and_confirm_stage(
             stage=stage,
@@ -463,7 +582,10 @@ def run_codex_pipeline(
             write_triage_run_summary(
                 run_dir, stamp, stages_to_run, stage_results, append_run_log
             )
-            return
+            raise CommandError(
+                f"triage stage validation failed: {stage}. See {run_dir / 'run_summary.json'}",
+                exit_code=1,
+            )
         if report:
             prior_reports[stage] = report
 

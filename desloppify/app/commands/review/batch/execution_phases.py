@@ -8,7 +8,13 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from ..batches_runtime import build_batch_tasks, make_run_log_writer, resolve_run_log_path
+from ..batches_runtime import (
+    BatchRunSummaryConfig,
+    build_batch_tasks,
+    make_run_log_writer,
+    resolve_run_log_path,
+    write_run_summary as write_run_summary_impl,
+)
 from ..prompt_sections import explode_to_single_dimension
 from ..runner_parallel import BatchExecutionOptions
 from ..runtime.policy import resolve_batch_run_policy
@@ -26,7 +32,6 @@ from .execution_results import (
     log_run_start,
     merge_and_write_results,
 )
-from .execution_summary import build_run_summary_writer
 from .scope import (
     normalize_dimension_list,
     print_preflight_dimension_scope_notice,
@@ -191,10 +196,9 @@ def prepare_batch_run(
         colorize_fn=deps.colorize_fn,
     )
     record_issue = partial(record_execution_issue, append_run_log)
-    write_run_summary = build_run_summary_writer(
-        run_dir=run_dir,
-        summary_created_at=summary_created_at,
-        stamp=stamp,
+    summary_config = BatchRunSummaryConfig(
+        created_at=summary_created_at,
+        run_stamp=stamp,
         runner=runner,
         run_parallel=run_parallel,
         selected_indexes=selected_indexes,
@@ -208,12 +212,18 @@ def prepare_batch_run(
         stall_kill_seconds=stall_kill_seconds,
         immutable_packet_path=immutable_packet_path,
         prompt_packet_path=prompt_packet_path,
+        run_dir=run_dir,
         logs_dir=logs_dir,
         run_log_path=run_log_path,
+    )
+    write_run_summary = partial(
+        write_run_summary_impl,
+        summary_path=run_dir / "run_summary.json",
+        summary_config=summary_config,
         batch_status=batch_status,
         safe_write_text_fn=deps.safe_write_text_fn,
         colorize_fn=deps.colorize_fn,
-        append_run_log=append_run_log,
+        append_run_log_fn=append_run_log,
     )
 
     return {

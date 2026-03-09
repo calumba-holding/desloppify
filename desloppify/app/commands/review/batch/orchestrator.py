@@ -56,6 +56,7 @@ from .core_merge_support import assessment_weight  # noqa: F401 — re-exported
 from .core_models import BatchResultPayload
 from .core_normalize import normalize_batch_result
 from .core_parse import extract_json_payload, parse_batch_selection
+from . import execution_phases as review_batch_phases_mod
 from .merge import merge_batch_results
 from .prompt_template import render_batch_prompt
 from . import execution as review_batches_mod
@@ -247,7 +248,7 @@ def do_run_batches(args, state, lang, state_file, config: dict | None = None) ->
     )
     batch_stall_kill_seconds = policy.stall_kill_seconds
 
-    from desloppify.engine._plan.project_policy import load_policy, render_policy_block
+    from desloppify.engine.plan import load_policy, render_policy_block
     _policy_block = render_policy_block(load_policy())
 
     def _prompt_fn_with_policy(**kwargs):
@@ -341,31 +342,44 @@ def do_run_batches(args, state, lang, state_file, config: dict | None = None) ->
             ),
         )
 
-    return review_batches_mod.do_run_batches(
-        args,
-        state,
-        lang,
-        state_file,
-        config=config,
-        deps=review_batches_mod.BatchRunDeps(
-            run_stamp_fn=run_stamp,
-            load_or_prepare_packet_fn=_load_or_prepare_packet,
-            selected_batch_indexes_fn=_adapted_selected_batch_indexes,
-            prepare_run_artifacts_fn=_adapted_prepare_run_artifacts,
-            run_codex_batch_fn=_adapted_run_codex_batch,
-            execute_batches_fn=_adapted_execute_batches,
-            collect_batch_results_fn=_adapted_collect_batch_results,
-            print_failures_fn=print_failures,
-            print_failures_and_raise_fn=print_failures_and_raise,
-            merge_batch_results_fn=_merge_batch_results,
-            build_import_provenance_fn=build_batch_import_provenance,
-            do_import_fn=_do_import,
-            run_followup_scan_fn=_adapted_run_followup_scan,
-            safe_write_text_fn=safe_write_text,
-            colorize_fn=colorize,
-        ),
+    batch_deps = review_batches_mod.BatchRunDeps(
+        run_stamp_fn=run_stamp,
+        load_or_prepare_packet_fn=_load_or_prepare_packet,
+        selected_batch_indexes_fn=_adapted_selected_batch_indexes,
+        prepare_run_artifacts_fn=_adapted_prepare_run_artifacts,
+        run_codex_batch_fn=_adapted_run_codex_batch,
+        execute_batches_fn=_adapted_execute_batches,
+        collect_batch_results_fn=_adapted_collect_batch_results,
+        print_failures_fn=print_failures,
+        print_failures_and_raise_fn=print_failures_and_raise,
+        merge_batch_results_fn=_merge_batch_results,
+        build_import_provenance_fn=build_batch_import_provenance,
+        do_import_fn=_do_import,
+        run_followup_scan_fn=_adapted_run_followup_scan,
+        safe_write_text_fn=safe_write_text,
+        colorize_fn=colorize,
+    )
+    prepared = review_batch_phases_mod.prepare_batch_run(
+        args=args,
+        state=state,
+        lang=lang,
+        config=config or {},
+        deps=batch_deps,
         project_root=runtime_project_root,
         subagent_runs_dir=subagent_runs_dir,
+    )
+    if prepared is None:
+        return
+
+    executed = review_batch_phases_mod.execute_batch_run(
+        prepared=prepared,
+        deps=batch_deps,
+    )
+    review_batch_phases_mod.merge_and_import_batch_run(
+        prepared=prepared,
+        executed=executed,
+        state_file=state_file,
+        deps=batch_deps,
     )
 
 def _validate_run_dir(run_dir: Path) -> tuple[dict, Path, str]:

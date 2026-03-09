@@ -122,7 +122,7 @@ def test_smoke_commands():
         next_output.build_query_payload,
         next_render_support.render_queue_header,
         review_batch_merge.merge_batch_results,
-        review_batches.do_run_batches,
+        review_batches.BatchRunDeps,
         review_import.do_import,
         review_import_helpers.load_import_issues_data,
         review_prepare.do_prepare,
