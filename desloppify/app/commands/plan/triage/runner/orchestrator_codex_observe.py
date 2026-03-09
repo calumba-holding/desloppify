@@ -5,14 +5,18 @@ from __future__ import annotations
 from functools import partial
 from pathlib import Path
 
-from desloppify.app.commands.review._runner_parallel_types import BatchExecutionOptions, BatchProgressEvent
-from desloppify.app.commands.review.runner_parallel import execute_batches
+from desloppify.app.commands.review._runner_parallel_types import BatchProgressEvent
 from desloppify.base.discovery.file_paths import safe_write_text
 from desloppify.base.output.terminal import colorize
 
 from ..helpers import group_issues_into_observe_batches
 from .codex_runner import _output_file_has_text, run_triage_stage
+from .orchestrator_codex_parallel import run_parallel_batches
 from .stage_prompts import build_observe_batch_prompt
+
+
+def _noop_log(_msg: str) -> None:
+    """Default run-log sink when the caller doesn't provide one."""
 
 
 def _merge_observe_outputs(
@@ -46,7 +50,7 @@ def run_observe(
     append_run_log=None,
 ) -> tuple[bool, str]:
     """Run observe stage via codex subprocess batches."""
-    _log = append_run_log or (lambda _msg: None)
+    _log = append_run_log or _noop_log
 
     batches = group_issues_into_observe_batches(si)
     total = len(batches)
@@ -90,33 +94,24 @@ def run_observe(
         print(colorize("  [dry-run] Would execute parallel observe batches.", "dim"))
         return True, ""
 
-    def _progress(event: BatchProgressEvent) -> None:
-        idx = event.batch_index
-        if event.event == "start":
-            print(colorize(f"    Observe batch {idx + 1}/{total} started", "dim"))
-            _log(f"observe-batch-start batch={idx + 1}")
-        elif event.event == "done":
-            elapsed = event.details.get("elapsed_seconds", 0) if event.details else 0
-            status = "done" if event.code == 0 else f"failed ({event.code})"
-            tone = "dim" if event.code == 0 else "yellow"
-            print(colorize(f"    Observe batch {idx + 1}/{total} {status} in {int(elapsed)}s", tone))
-            _log(f"observe-batch-done batch={idx + 1} code={event.code} elapsed={int(elapsed)}s")
-        elif event.event == "heartbeat":
-            details = event.details or {}
-            active = details.get("active_batches", [])
-            elapsed_map = details.get("elapsed_seconds", {})
-            if active:
-                parts = [f"#{i + 1}:{int(elapsed_map.get(i, 0))}s" for i in active[:6]]
-                print(colorize(f"    Observe heartbeat: {len(active)}/{total} active ({', '.join(parts)})", "dim"))
+    def _heartbeat(event: BatchProgressEvent) -> None:
+        details = event.details or {}
+        active = details.get("active_batches", [])
+        elapsed_map = details.get("elapsed_seconds", {})
+        if active:
+            parts = [f"#{i + 1}:{int(elapsed_map.get(i, 0))}s" for i in active[:6]]
+            print(colorize(f"    Observe heartbeat: {len(active)}/{total} active ({', '.join(parts)})", "dim"))
 
-    def _error_log(batch_index: int, exc: Exception) -> None:
-        _log(f"observe-batch-error batch={batch_index + 1} error={exc}")
+    def _batch_label(idx: int) -> str:
+        return f"batch {idx + 1}/{total}"
 
-    failures = execute_batches(
+    failures = run_parallel_batches(
         tasks=tasks,
-        options=BatchExecutionOptions(run_parallel=True, heartbeat_seconds=15.0),
-        progress_fn=_progress,
-        error_log_fn=_error_log,
+        stage_label="Observe",
+        batch_label_fn=_batch_label,
+        append_run_log=_log,
+        heartbeat_seconds=15.0,
+        heartbeat_printer=_heartbeat,
     )
 
     if failures:

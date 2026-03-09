@@ -6,15 +6,16 @@ import json
 import logging
 
 try:
-    import defusedxml.ElementTree as ET
+    import defusedxml.ElementTree as _element_tree
 except ModuleNotFoundError:  # pragma: no cover
-    import xml.etree.ElementTree as ET  # type: ignore[no-redef]
+    import xml.etree.ElementTree as _element_tree
 from pathlib import Path
 
 from desloppify.base.discovery.file_paths import resolve_path
 from desloppify.languages.csharp.extractors import CSHARP_FILE_EXCLUSIONS
 
 logger = logging.getLogger(__name__)
+ET = _element_tree
 
 _PROJECT_EXCLUSIONS = set(CSHARP_FILE_EXCLUSIONS) | {".git"}
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 
 from desloppify.base.registry import DETECTORS
 from desloppify.engine._plan.cluster_strategy import (
@@ -19,6 +20,16 @@ from desloppify.engine._plan.cluster_strategy import (
 )
 
 _MIN_CLUSTER_SIZE = 2
+
+
+@dataclass(frozen=True)
+class AutoClusterSyncResult:
+    """Explicit result describing what `_sync_auto_cluster` changed."""
+
+    cluster_name: str
+    changed: bool
+    created: bool
+    member_count: int
 
 
 def _manual_member_ids(clusters: dict) -> set[str]:
@@ -97,9 +108,16 @@ def _sync_auto_cluster(
     action: str,
     now: str,
     optional: bool = False,
-) -> int:
-    """Create or update an auto-cluster and sync its override entries."""
+) -> AutoClusterSyncResult:
+    """Create/update one auto-cluster and report the mutation outcome.
+
+    Mutates:
+      - ``clusters`` (cluster create/update),
+      - ``existing_by_key`` (cluster-key to name binding),
+      - ``plan['overrides']`` (cluster ownership for each member issue).
+    """
     changes = 0
+    created = False
     existing_name = existing_by_key.get(cluster_key)
     if existing_name and existing_name in clusters:
         cluster = clusters[existing_name]
@@ -132,6 +150,7 @@ def _sync_auto_cluster(
         clusters[cluster_name] = new_cluster
         existing_by_key[cluster_key] = cluster_name
         changes = 1
+        created = True
 
     overrides = plan.get("overrides", {})
     current_name = existing_by_key.get(cluster_key, cluster_name)
@@ -141,7 +160,12 @@ def _sync_auto_cluster(
         overrides[fid]["cluster"] = current_name
         overrides[fid]["updated_at"] = now
 
-    return changes
+    return AutoClusterSyncResult(
+        cluster_name=current_name,
+        changed=bool(changes),
+        created=created,
+        member_count=len(member_ids),
+    )
 
 
 def sync_issue_clusters(
@@ -190,7 +214,7 @@ def sync_issue_clusters(
         if cluster_name in clusters and clusters[cluster_name].get("cluster_key") != key:
             cluster_name = f"{cluster_name}-{len(member_ids)}"
 
-        changes += _sync_auto_cluster(
+        sync_result = _sync_auto_cluster(
             plan,
             clusters,
             existing_by_key,
@@ -201,8 +225,9 @@ def sync_issue_clusters(
             action=action,
             now=now,
         )
+        changes += int(sync_result.changed)
 
     return changes
 
 
-__all__ = ["sync_issue_clusters"]
+__all__ = ["AutoClusterSyncResult", "sync_issue_clusters"]

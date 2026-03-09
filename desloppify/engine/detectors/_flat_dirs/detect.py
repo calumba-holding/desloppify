@@ -22,30 +22,53 @@ from .stats import all_tracked_dirs, build_dir_stats
 def detect_flat_dirs(
     path: Path,
     file_finder,
-    threshold: int = 20,
-    *,
     config: FlatDirDetectionConfig | None = None,
-    child_dir_threshold: int = 10,
-    child_dir_weight: int = 3,
-    combined_threshold: int = 30,
-    sparse_parent_child_threshold: int = 8,
-    sparse_child_file_threshold: int = 1,
-    sparse_child_count_threshold: int = 6,
-    sparse_child_ratio_threshold: float = 0.7,
-    thin_wrapper_parent_sibling_threshold: int = 10,
-    thin_wrapper_max_file_count: int = 1,
-    thin_wrapper_max_child_dir_count: int = 1,
-    thin_wrapper_names: tuple[str, ...] = DEFAULT_THIN_WRAPPER_NAMES,
+    **legacy_settings: object,
 ) -> tuple[list[dict], int]:
     """Find overloaded/fragmented directories using count and fan-out heuristics."""
-    if config is None:
-        cleaned_wrapper_names = tuple(
-            dict.fromkeys(
-                name.strip().lower()
-                for name in thin_wrapper_names
-                if isinstance(name, str) and name.strip()
-            )
+    if config is not None and legacy_settings:
+        raise TypeError(
+            "detect_flat_dirs accepts either config=FlatDirDetectionConfig(...) "
+            "or legacy threshold kwargs, not both."
         )
+
+    if config is None and legacy_settings:
+        threshold = int(legacy_settings.pop("threshold", 20))
+        child_dir_threshold = int(legacy_settings.pop("child_dir_threshold", 10))
+        child_dir_weight = int(legacy_settings.pop("child_dir_weight", 3))
+        combined_threshold = int(legacy_settings.pop("combined_threshold", 30))
+        sparse_parent_child_threshold = int(
+            legacy_settings.pop("sparse_parent_child_threshold", 8)
+        )
+        sparse_child_file_threshold = int(
+            legacy_settings.pop("sparse_child_file_threshold", 1)
+        )
+        sparse_child_count_threshold = int(
+            legacy_settings.pop("sparse_child_count_threshold", 6)
+        )
+        sparse_child_ratio_threshold = float(
+            legacy_settings.pop("sparse_child_ratio_threshold", 0.7)
+        )
+        thin_wrapper_parent_sibling_threshold = int(
+            legacy_settings.pop("thin_wrapper_parent_sibling_threshold", 10)
+        )
+        thin_wrapper_max_file_count = int(
+            legacy_settings.pop("thin_wrapper_max_file_count", 1)
+        )
+        thin_wrapper_max_child_dir_count = int(
+            legacy_settings.pop("thin_wrapper_max_child_dir_count", 1)
+        )
+        thin_wrapper_names = legacy_settings.pop(
+            "thin_wrapper_names",
+            DEFAULT_THIN_WRAPPER_NAMES,
+        )
+        if not isinstance(thin_wrapper_names, tuple):
+            thin_wrapper_names = tuple(DEFAULT_THIN_WRAPPER_NAMES)
+
+        if legacy_settings:
+            unknown = ", ".join(sorted(legacy_settings.keys()))
+            raise TypeError(f"detect_flat_dirs got unexpected keyword argument(s): {unknown}")
+
         settings = resolve_detection_settings(
             threshold=threshold,
             config=None,
@@ -59,10 +82,10 @@ def detect_flat_dirs(
             thin_wrapper_parent_sibling_threshold=thin_wrapper_parent_sibling_threshold,
             thin_wrapper_max_file_count=thin_wrapper_max_file_count,
             thin_wrapper_max_child_dir_count=thin_wrapper_max_child_dir_count,
-            thin_wrapper_names=cleaned_wrapper_names or DEFAULT_THIN_WRAPPER_NAMES,
+            thin_wrapper_names=thin_wrapper_names,
         )
     else:
-        settings = config
+        settings = config or FlatDirDetectionConfig()
     files = file_finder(path)
     scan_root = path.resolve()
     dir_counts, child_dirs = build_dir_stats(scan_root, files)

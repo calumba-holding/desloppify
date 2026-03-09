@@ -12,6 +12,7 @@ import pytest
 
 from desloppify.app.commands.review.batch.scope import require_batches
 from desloppify.app.commands.review.importing.helpers import (
+    ImportLoadConfig,
     ImportPayloadLoadError,
     assessment_mode_label,
     load_import_issues_data,
@@ -138,6 +139,39 @@ def test_import_manual_override_rejects_allow_partial_combo(tmp_path, capsys):
         )
     err = _render_import_load_error(exc.value, import_file=issues_path, capsys=capsys)
     assert "--manual-override cannot be combined with --allow-partial" in err
+
+
+def test_import_config_rejects_legacy_kwargs_mix(tmp_path, capsys):
+    payload = {
+        "issues": [],
+        "assessments": {"naming_quality": 95},
+    }
+    issues_path = tmp_path / "issues.json"
+    issues_path.write_text(json.dumps(payload))
+
+    with pytest.raises(ImportPayloadLoadError) as exc:
+        load_import_issues_data(
+            str(issues_path),
+            colorize_fn=_colorize,
+            config=ImportLoadConfig(),
+            manual_override=True,
+        )
+    err = _render_import_load_error(exc.value, import_file=issues_path, capsys=capsys)
+    assert "Import config conflict" in err
+    assert "manual_override" in err
+
+
+def test_import_config_allows_clean_config_only_path(tmp_path):
+    payload = {"issues": [], "assessments": {"naming_quality": 95}}
+    issues_path = tmp_path / "issues.json"
+    issues_path.write_text(json.dumps(payload))
+
+    parsed = load_import_issues_data(
+        str(issues_path),
+        colorize_fn=_colorize,
+        config=ImportLoadConfig(manual_override=True, manual_attest="manual override ok"),
+    )
+    assert parsed["assessments"]["naming_quality"] == 95
 
 
 def test_import_attested_external_requires_attest_phrases(tmp_path, capsys):

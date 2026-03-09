@@ -11,7 +11,7 @@ from desloppify.intelligence.review.importing.contracts_types import (
 
 
 # mypy struggles with `total=False` on TypedDict inheritance across modules.
-class BatchIssuePayload(ReviewIssuePayload, total=False):  # type: ignore[call-arg]
+class BatchIssuePayload(ReviewIssuePayload, total=False):  # type: ignore[call-arg]  # Inheritance form is runtime-valid but rejected by current type checker.
     """Normalized issue payload passed across batch merge/import seams."""
 
     impact_scope: str

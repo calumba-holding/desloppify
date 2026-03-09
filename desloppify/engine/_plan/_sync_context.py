@@ -15,6 +15,8 @@ from __future__ import annotations
 from desloppify.engine._plan.schema import PlanModel
 from desloppify.engine._plan.subjective_policy import (
     NON_OBJECTIVE_DETECTORS as _NON_OBJECTIVE_DETECTORS,
+)
+from desloppify.engine._plan.subjective_policy import (
     SubjectiveVisibility,
 )
 from desloppify.engine._state.schema import StateModel
@@ -33,8 +35,12 @@ def has_objective_backlog(
     if policy is not None:
         return policy.has_objective_backlog
 
-    # Accept either state dict (has "issues" key) or raw issues dict.
-    issues = state_or_issues.get("issues", state_or_issues)  # type: ignore[union-attr]
+    # Accept either full state payload (`{"issues": ...}`) or raw issues dict.
+    issues = state_or_issues
+    if isinstance(state_or_issues, dict):
+        maybe_issues = state_or_issues.get("issues")
+        if isinstance(maybe_issues, dict):
+            issues = maybe_issues
     return any(
         f.get("status") == "open"
         and f.get("detector") not in _NON_OBJECTIVE_DETECTORS

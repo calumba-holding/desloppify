@@ -1,12 +1,24 @@
 """Tests for desloppify.engine.detectors.flat_dirs — flat directory detection."""
 
+import pytest
+
 from desloppify.engine.detectors.flat_dirs import (
+    FlatDirDetectionConfig,
     detect_flat_dirs,
     format_flat_dir_summary,
 )
 
 
 class TestDetectFlatDirs:
+    def test_rejects_mixed_config_and_legacy_kwargs(self, tmp_path):
+        with pytest.raises(TypeError):
+            detect_flat_dirs(
+                tmp_path,
+                file_finder=lambda p: [],
+                config=FlatDirDetectionConfig(),
+                threshold=20,
+            )
+
     def test_dir_over_threshold_detected(self, tmp_path):
         d = tmp_path / "components"
         d.mkdir()

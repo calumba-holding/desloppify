@@ -26,7 +26,7 @@ __all__ = [
 
 @dataclass
 class _RegistryState:
-    registry: dict[str, LangConfig]  # type: ignore[type-arg]  # runtime uses Any
+    registry: dict[str, LangConfig]
     load_attempted: bool
     load_errors: dict[str, BaseException]
 

@@ -91,7 +91,7 @@ def sync_subjective_clusters(
             f"Initial review of {len(unscored_queue_ids)} unscored subjective dimensions"
         )
         action = f"desloppify review --prepare --dimensions {','.join(cli_keys)}"
-        changes += _sync_auto_cluster(
+        sync_result = _sync_auto_cluster(
             plan,
             clusters,
             existing_by_key,
@@ -102,13 +102,14 @@ def sync_subjective_clusters(
             action=action,
             now=now,
         )
+        changes += int(sync_result.changed)
 
     if len(stale_queue_ids) >= _MIN_CLUSTER_SIZE:
         active_auto_keys.add(_STALE_KEY)
         cli_keys = [fid.removeprefix(SUBJECTIVE_PREFIX) for fid in stale_queue_ids]
         description = f"Re-review {len(stale_queue_ids)} stale subjective dimensions"
         action = "desloppify review --prepare --dimensions " + ",".join(cli_keys)
-        changes += _sync_auto_cluster(
+        sync_result = _sync_auto_cluster(
             plan,
             clusters,
             existing_by_key,
@@ -119,6 +120,7 @@ def sync_subjective_clusters(
             action=action,
             now=now,
         )
+        changes += int(sync_result.changed)
 
     under_target_queue_ids = sorted(under_target_ids)
 
@@ -147,7 +149,7 @@ def sync_subjective_clusters(
             f"dimensions under target score"
         )
         action = "desloppify review --prepare --dimensions " + ",".join(cli_keys)
-        changes += _sync_auto_cluster(
+        sync_result = _sync_auto_cluster(
             plan,
             clusters,
             existing_by_key,
@@ -159,6 +161,7 @@ def sync_subjective_clusters(
             now=now,
             optional=True,
         )
+        changes += int(sync_result.changed)
 
         existing_order = set(order)
         for fid in under_target_queue_ids:
