@@ -10,6 +10,7 @@ import desloppify.intelligence.review.importing.holistic_cache as holistic_cache
 import desloppify.intelligence.review.importing.holistic_issue_flow as issue_flow_mod
 import desloppify.intelligence.review.importing.resolution as resolution_mod
 import desloppify.intelligence.review.importing.state_helpers as state_helpers_mod
+import desloppify.intelligence.review.prepare_batches_core as prepare_batches_core_mod
 import desloppify.intelligence.review.prepare_batches_collectors_quality as collectors_quality_mod
 import desloppify.intelligence.review.prepare_batches_collectors_structure as collectors_structure_mod
 import desloppify.intelligence.review.prepare_holistic_orchestration as orchestration_mod
@@ -255,3 +256,76 @@ def test_collectors_scope_payload_parts_and_orchestration_helpers(monkeypatch, t
     )
     assert dim_ctx.dims == ["naming_quality"]
     assert dim_ctx.lang_guide == "guide"
+
+
+def test_prepare_batches_core_path_normalization_rules() -> None:
+    assert prepare_batches_core_mod._normalize_file_path(" src/app.py ") == "src/app.py"
+    assert prepare_batches_core_mod._normalize_file_path('"README",') == "README"
+    assert prepare_batches_core_mod._normalize_file_path("'Dockerfile'") == "Dockerfile"
+    assert prepare_batches_core_mod._normalize_file_path("src/config") is None
+    assert prepare_batches_core_mod._normalize_file_path("src/dir/") is None
+    assert prepare_batches_core_mod._normalize_file_path(".") is None
+    assert prepare_batches_core_mod._normalize_file_path("..") is None
+    assert prepare_batches_core_mod._normalize_file_path(123) is None
+
+
+def test_prepare_batches_core_collectors_preserve_order_and_limits() -> None:
+    files = prepare_batches_core_mod._collect_unique_files(
+        [
+            [
+                {"file": "src/a.py"},
+                {"file": "src/b.py"},
+                {"file": "src/a.py"},
+            ],
+            [
+                {"file": "'README'"},
+                {"file": "src/noext"},
+                {"file": "src/c.py,"},
+            ],
+        ],
+        max_files=4,
+    )
+    assert files == ["src/a.py", "src/b.py", "README", "src/c.py"]
+
+    files_from_batches = prepare_batches_core_mod._collect_files_from_batches(
+        [
+            {"files_to_read": ["src/a.py", "src/a.py", "src/noext"]},
+            {"files_to_read": ["src/b.py,", '"README"']},
+            {"files_to_read": ["src/c.py"]},
+        ],
+        max_files=3,
+    )
+    assert files_from_batches == ["src/a.py", "src/b.py", "README"]
+
+
+def test_prepare_batches_core_directory_profile_mapping_and_context_coercion() -> None:
+    context = prepare_batches_core_mod._ensure_holistic_context(
+        {
+            "structure": {
+                "directory_profiles": {
+                    "src/": {
+                        "files": ["a.py", "b.py", "README", "noext", "nested/"],
+                    },
+                    ".": {"files": ["main.py", "README", "config"]},
+                }
+            }
+        }
+    )
+
+    assert prepare_batches_core_mod._representative_files_for_directory(
+        context,
+        "src",
+        max_files=2,
+    ) == ["src/a.py", "src/b.py"]
+    assert prepare_batches_core_mod._representative_files_for_directory(
+        context,
+        ".",
+        max_files=3,
+    ) == ["main.py", "README"]
+    assert (
+        prepare_batches_core_mod._representative_files_for_directory(
+            context,
+            "missing",
+        )
+        == []
+    )
