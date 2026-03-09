@@ -40,11 +40,26 @@ def test_triage_helper_modules_direct_coverage_smoke() -> None:
     codex_src = inspect.getsource(triage_codex_runner_mod)
     observe_src = inspect.getsource(triage_observe_mod)
     parallel_src = inspect.getsource(triage_parallel_mod)
-    assert "app.commands.review._runner_process_types" not in codex_src
-    assert "app.commands.review._runner_parallel_types" not in observe_src
-    assert "app.commands.review._runner_parallel_types" not in parallel_src
+    assert "app.commands.review.runner_process_impl.types" not in codex_src
+    assert "app.commands.review.runner_parallel.types" not in observe_src
+    assert "app.commands.review.runner_parallel.types" not in parallel_src
 
     display_src = inspect.getsource(triage_display_mod)
     display_layout_src = inspect.getsource(triage_display_layout_mod)
     assert "from . import display as display_mod" not in display_layout_src
     assert "from .display_primitives import print_stage_progress" in display_src
+
+
+def test_count_log_activity_since_ignores_malformed_entries() -> None:
+    plan = {
+        "execution_log": [
+            {"timestamp": "2026-01-01T00:00:00Z", "action": "resolve"},
+            {"timestamp": "2026-01-01T00:00:00Z", "action": 123},
+            {"timestamp": 123, "action": "skip"},
+            {"action": "skip"},
+            {"timestamp": "2026-01-01T00:00:00Z"},
+            "bad-entry",
+        ]
+    }
+    counts = triage_helpers_mod.count_log_activity_since(plan, "2025-12-31T00:00:00Z")
+    assert counts == {"resolve": 1}

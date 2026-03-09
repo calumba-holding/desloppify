@@ -233,9 +233,17 @@ def find_cluster_for(fid: str, clusters: dict) -> str | None:
 def count_log_activity_since(plan: dict, since: str) -> dict[str, int]:
     """Count execution log entries by action since *since* timestamp."""
     counts: dict[str, int] = defaultdict(int)
-    for entry in plan.get("execution_log", []):
-        if entry.get("timestamp", "") >= since:
-            counts[entry.get("action", "unknown")] += 1
+    for raw_entry in plan.get("execution_log", []):
+        if not isinstance(raw_entry, dict):
+            continue
+        if "timestamp" not in raw_entry or "action" not in raw_entry:
+            continue
+        timestamp = raw_entry["timestamp"]
+        action = raw_entry["action"]
+        if not isinstance(timestamp, str) or not isinstance(action, str):
+            continue
+        if timestamp >= since:
+            counts[action] += 1
     return dict(counts)
 
 __all__ = [

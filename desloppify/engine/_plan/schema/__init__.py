@@ -240,7 +240,11 @@ def validate_plan(plan: dict[str, Any]) -> None:
 
     # Validate skip entry kinds
     for fid, entry in plan.get("skipped", {}).items():
-        kind = entry.get("kind")
+        if not isinstance(entry, dict):
+            raise ValueError(f"plan.skipped[{fid!r}] must be an object")
+        if "kind" not in entry:
+            raise ValueError(f"plan.skipped[{fid!r}] missing required key 'kind'")
+        kind = entry["kind"]
         if kind not in VALID_SKIP_KINDS:
             raise ValueError(
                 f"Invalid skip kind {kind!r} for {fid}; must be one of {sorted(VALID_SKIP_KINDS)}"

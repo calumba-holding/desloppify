@@ -286,6 +286,16 @@ def test_validate_invalid_skip_kind():
         assert "invalid_kind" in str(exc)
 
 
+def test_validate_skip_entry_missing_kind():
+    plan = empty_plan()
+    plan["skipped"] = {"a": {"issue_id": "a"}}
+    try:
+        validate_plan(plan)
+        raise AssertionError("Should have raised ValueError")
+    except ValueError as exc:
+        assert "missing required key 'kind'" in str(exc)
+
+
 # ---------------------------------------------------------------------------
 # Reconcile: superseded items in skipped
 # ---------------------------------------------------------------------------
