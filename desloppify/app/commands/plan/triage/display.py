@@ -8,11 +8,13 @@ from desloppify.app.commands.helpers.display import short_issue_id
 from desloppify.base.output.terminal import colorize
 from desloppify.base.output.user_message import print_user_message
 
-from .display_layout import print_action_guidance as _print_action_guidance_impl
-from .display_layout import print_dashboard_header as _print_dashboard_header_impl
-from .display_layout import print_issues_by_dimension as _print_issues_by_dimension_impl
-from .display_layout import print_prior_stage_reports as _print_prior_stage_reports_impl
-from .display_layout import show_plan_summary as _show_plan_summary_impl
+from .display_layout import (
+    print_action_guidance,
+    print_dashboard_header,
+    print_issues_by_dimension,
+    print_prior_stage_reports,
+    show_plan_summary,
+)
 from .display_primitives import print_stage_progress
 from .helpers import (
     print_cascade_clear_feedback,
@@ -198,22 +200,6 @@ def print_reflect_dashboard(
         print(colorize("  - What's the overall arc of work and why?", "dim"))
 
 
-def _print_dashboard_header(si: object, stages: dict, meta: dict, plan: dict) -> None:
-    _print_dashboard_header_impl(si, stages, meta, plan)
-
-
-def _print_action_guidance(stages: dict, meta: dict, si: object, plan: dict) -> None:
-    _print_action_guidance_impl(stages, meta, si, plan)
-
-
-def _print_prior_stage_reports(stages: dict) -> None:
-    _print_prior_stage_reports_impl(stages)
-
-
-def _print_issues_by_dimension(open_issues: dict) -> None:
-    _print_issues_by_dimension_impl(open_issues)
-
-
 def cmd_triage_dashboard(
     args: argparse.Namespace,
     *,
@@ -228,19 +214,15 @@ def cmd_triage_dashboard(
     meta = plan.get("epic_triage_meta", {})
     stages = meta.get("triage_stages", {})
 
-    _print_dashboard_header(si, stages, meta, plan)
-    _print_action_guidance(stages, meta, si, plan)
-    _print_prior_stage_reports(stages)
-    _print_issues_by_dimension(si.open_issues)
+    print_dashboard_header(si, stages, meta, plan)
+    print_action_guidance(stages, meta, si, plan)
+    print_prior_stage_reports(stages)
+    print_issues_by_dimension(si.open_issues)
 
     if "observe" in stages and "reflect" not in stages:
         print_reflect_dashboard(si, plan, services=resolved_services)
 
     print_progress(plan, si.open_issues)
-
-
-def show_plan_summary(plan: dict, state: dict) -> None:
-    _show_plan_summary_impl(plan, state)
 
 
 __all__ = [
