@@ -107,6 +107,211 @@ def _enforce_cluster_activity_for_organize(
     return False
 
 
+def _validate_reflect_submission(
+    *,
+    report: str,
+    plan: dict,
+    state: dict,
+    stages: dict,
+    attestation: str | None,
+    services: TriageServices,
+):
+    if "observe" not in stages:
+        print(colorize("  Cannot reflect: observe stage not complete.", "red"))
+        print(colorize('  Run: desloppify plan triage --stage observe --report "..."', "dim"))
+        return None
+
+    si = services.collect_triage_input(plan, state)
+    if not _auto_confirm_observe_if_attested(
+        plan=plan,
+        stages=stages,
+        attestation=attestation,
+        triage_input=si,
+        save_plan_fn=services.save_plan,
+    ):
+        return None
+
+    issue_count = len(si.open_issues)
+    if not _validate_stage_report_length(
+        report=report,
+        issue_count=issue_count,
+        guidance="  Describe how current issues relate to previously completed work.",
+    ):
+        return None
+
+    recurring = services.detect_recurring_patterns(
+        si.open_issues,
+        si.resolved_issues,
+    )
+    recurring_dims = sorted(recurring.keys())
+    if not _validate_recurring_dimension_mentions(
+        report=report,
+        recurring_dims=recurring_dims,
+        recurring=recurring,
+    ):
+        return None
+
+    accounting_ok, cited_ids, missing_ids, duplicate_ids = _validate_reflect_issue_accounting(
+        report=report,
+        valid_ids=set(si.open_issues.keys()),
+    )
+    if not accounting_ok:
+        return None
+
+    from .stages.evidence_parsing import (
+        format_evidence_failures,
+        validate_reflect_skip_evidence,
+    )
+
+    blocking_skips = [
+        failure
+        for failure in validate_reflect_skip_evidence(report)
+        if failure.blocking
+    ]
+    if blocking_skips:
+        print(colorize(format_evidence_failures(blocking_skips, stage_label="reflect"), "red"))
+        return None
+
+    return si, issue_count, recurring, recurring_dims, cited_ids, missing_ids, duplicate_ids
+
+
+def _persist_reflect_stage(
+    *,
+    plan: dict,
+    meta: dict,
+    stages: dict,
+    report: str,
+    issue_count: int,
+    cited_ids: set[str],
+    missing_ids: list[str],
+    duplicate_ids: list[str],
+    recurring_dims: list[str],
+    existing_stage: dict | None,
+    is_reuse: bool,
+    services: TriageServices,
+) -> tuple[dict, list[str]]:
+    stages = meta.setdefault("triage_stages", {})
+    reflect_stage = {
+        "stage": "reflect",
+        "report": report,
+        "cited_ids": sorted(cited_ids),
+        "timestamp": utc_now(),
+        "issue_count": issue_count,
+        "missing_issue_ids": missing_ids,
+        "duplicate_issue_ids": duplicate_ids,
+        "recurring_dims": recurring_dims,
+    }
+    stages["reflect"] = reflect_stage
+    if is_reuse and existing_stage and existing_stage.get("confirmed_at"):
+        reflect_stage["confirmed_at"] = existing_stage["confirmed_at"]
+        reflect_stage["confirmed_text"] = existing_stage.get("confirmed_text", "")
+    cleared = cascade_clear_later_confirmations(stages, "reflect")
+
+    services.save_plan(plan)
+    services.append_log_entry(
+        plan,
+        "triage_reflect",
+        actor="user",
+        detail={"issue_count": issue_count, "reuse": is_reuse, "recurring_dims": recurring_dims},
+    )
+    services.save_plan(plan)
+    return reflect_stage, cleared
+
+
+def _validate_organize_submission(
+    *,
+    args: argparse.Namespace,
+    plan: dict,
+    state: dict,
+    stages: dict,
+    report: str | None,
+    attestation: str | None,
+    is_reuse: bool,
+    services: TriageServices,
+) -> tuple[list[str], str] | None:
+    open_review_ids = open_review_ids_from_state(state)
+    triage_input = services.collect_triage_input(plan, state)
+
+    if not _auto_confirm_reflect_for_organize(
+        args=args,
+        plan=plan,
+        stages=stages,
+        attestation=attestation,
+        triage_input=triage_input,
+        detect_recurring_patterns_fn=services.detect_recurring_patterns,
+        save_plan_fn=services.save_plan,
+    ):
+        return None
+
+    manual_clusters = _manual_clusters_or_error(plan, open_review_ids=open_review_ids)
+    if manual_clusters is None:
+        return None
+    if not _clusters_enriched_or_error(plan):
+        return None
+    if not _unclustered_review_issues_or_error(plan, state):
+        return None
+    if not _enforce_cluster_activity_for_organize(
+        plan=plan,
+        stages=stages,
+        manual_clusters=manual_clusters,
+        open_review_ids=open_review_ids,
+        is_reuse=is_reuse,
+        attestation=attestation,
+    ):
+        return None
+
+    normalized_report = _organize_report_or_error(report)
+    if normalized_report is None:
+        return None
+
+    from .stages.evidence_parsing import (
+        format_evidence_failures,
+        validate_report_references_clusters,
+    )
+
+    cluster_ref_failures = validate_report_references_clusters(
+        normalized_report,
+        manual_clusters,
+    )
+    if cluster_ref_failures:
+        print(colorize(
+            format_evidence_failures(cluster_ref_failures, stage_label="organize"),
+            "red",
+        ))
+        return None
+    return manual_clusters, normalized_report
+
+
+def _persist_organize_stage(
+    *,
+    plan: dict,
+    meta: dict,
+    report: str,
+    open_review_ids: set[str],
+    existing_stage: dict | None,
+    is_reuse: bool,
+    manual_clusters: list[str],
+    services: TriageServices,
+) -> tuple[list[str], dict]:
+    stages = meta.setdefault("triage_stages", {})
+    cleared = record_organize_stage(
+        stages,
+        report=report,
+        issue_count=len(open_review_ids),
+        existing_stage=existing_stage,
+        is_reuse=is_reuse,
+    )
+    services.save_plan(plan)
+    services.append_log_entry(
+        plan,
+        "triage_organize",
+        actor="user",
+        detail={"cluster_count": len(manual_clusters), "reuse": is_reuse},
+    )
+    services.save_plan(plan)
+    return cleared, stages
+
+
 # -- Stage commands --
 
 
@@ -272,100 +477,35 @@ def _cmd_stage_reflect(
     stages = meta.get("triage_stages", {})
 
     existing_stage = stages.get("reflect")
-    if not report and existing_stage and existing_stage.get("report"):
-        report = existing_stage["report"]
-        is_reuse = True
-    else:
-        is_reuse = False
+    report, is_reuse = resolve_reusable_report(report, existing_stage)
     if not report:
         _print_reflect_report_requirement()
         return
-
-    if "observe" not in stages:
-        print(colorize("  Cannot reflect: observe stage not complete.", "red"))
-        print(colorize('  Run: desloppify plan triage --stage observe --report "..."', "dim"))
-        return
-
-    si = resolved_services.collect_triage_input(plan, state)
-
-    if not _auto_confirm_observe_if_attested(
+    submission = _validate_reflect_submission(
+        report=report,
         plan=plan,
+        state=state,
         stages=stages,
         attestation=attestation,
-        triage_input=si,
-        save_plan_fn=resolved_services.save_plan,
-    ):
+        services=resolved_services,
+    )
+    if submission is None:
         return
-
-    issue_count = len(si.open_issues)
-
-    if not _validate_stage_report_length(
+    si, issue_count, recurring, recurring_dims, cited_ids, missing_ids, duplicate_ids = submission
+    reflect_stage, cleared = _persist_reflect_stage(
+        plan=plan,
+        meta=meta,
+        stages=stages,
         report=report,
         issue_count=issue_count,
-        guidance="  Describe how current issues relate to previously completed work.",
-    ):
-        return
-
-    recurring = resolved_services.detect_recurring_patterns(
-        si.open_issues,
-        si.resolved_issues,
-    )
-    recurring_dims = sorted(recurring.keys())
-
-    if not _validate_recurring_dimension_mentions(
-        report=report,
+        cited_ids=cited_ids,
+        missing_ids=missing_ids,
+        duplicate_ids=duplicate_ids,
         recurring_dims=recurring_dims,
-        recurring=recurring,
-    ):
-        return
-
-    valid_ids = set(si.open_issues.keys())
-    accounting_ok, cited_ids, missing_ids, duplicate_ids = _validate_reflect_issue_accounting(
-        report=report,
-        valid_ids=valid_ids,
+        existing_stage=existing_stage,
+        is_reuse=is_reuse,
+        services=resolved_services,
     )
-    if not accounting_ok:
-        return
-
-    # Validate skip-reason evidence
-    from .stages.evidence_parsing import (
-        format_evidence_failures,
-        validate_reflect_skip_evidence,
-    )
-
-    skip_failures = validate_reflect_skip_evidence(report)
-    blocking_skips = [f for f in skip_failures if f.blocking]
-    if blocking_skips:
-        print(colorize(format_evidence_failures(blocking_skips, stage_label="reflect"), "red"))
-        return
-
-    # Persist
-    stages = meta.setdefault("triage_stages", {})
-    reflect_stage = {
-        "stage": "reflect",
-        "report": report,
-        "cited_ids": sorted(cited_ids),
-        "timestamp": utc_now(),
-        "issue_count": issue_count,
-        "missing_issue_ids": missing_ids,
-        "duplicate_issue_ids": duplicate_ids,
-        "recurring_dims": recurring_dims,
-    }
-    stages["reflect"] = reflect_stage
-
-    if is_reuse and existing_stage and existing_stage.get("confirmed_at"):
-        reflect_stage["confirmed_at"] = existing_stage["confirmed_at"]
-        reflect_stage["confirmed_text"] = existing_stage.get("confirmed_text", "")
-    cleared = cascade_clear_later_confirmations(stages, "reflect")
-
-    resolved_services.save_plan(plan)
-    resolved_services.append_log_entry(
-        plan,
-        "triage_reflect",
-        actor="user",
-        detail={"issue_count": issue_count, "reuse": is_reuse, "recurring_dims": recurring_dims},
-    )
-    resolved_services.save_plan(plan)
 
     print_reflect_result(
         issue_count=issue_count,
@@ -409,76 +549,30 @@ def _cmd_stage_organize(
     runtime = resolved_services.command_runtime(args)
     state = runtime.state
     open_review_ids = open_review_ids_from_state(state)
-    triage_input = resolved_services.collect_triage_input(plan, state)
 
-    if not _auto_confirm_reflect_for_organize(
+    validated = _validate_organize_submission(
         args=args,
         plan=plan,
+        state=state,
         stages=stages,
-        attestation=attestation,
-        triage_input=triage_input,
-        detect_recurring_patterns_fn=resolved_services.detect_recurring_patterns,
-        save_plan_fn=resolved_services.save_plan,
-    ):
-        return
-
-    manual_clusters = _manual_clusters_or_error(plan, open_review_ids=open_review_ids)
-    if manual_clusters is None:
-        return
-
-    if not _clusters_enriched_or_error(plan):
-        return
-
-    if not _unclustered_review_issues_or_error(plan, state):
-        return
-
-    if not _enforce_cluster_activity_for_organize(
-        plan=plan,
-        stages=stages,
-        manual_clusters=manual_clusters,
-        open_review_ids=open_review_ids,
-        is_reuse=is_reuse,
-        attestation=attestation,
-    ):
-        return
-
-    report = _organize_report_or_error(report)
-    if report is None:
-        return
-
-    # Validate cluster references in report
-    from .stages.evidence_parsing import (
-        format_evidence_failures,
-        validate_report_references_clusters,
-    )
-
-    cluster_ref_failures = validate_report_references_clusters(report, manual_clusters)
-    if cluster_ref_failures:
-        print(colorize(
-            format_evidence_failures(cluster_ref_failures, stage_label="organize"),
-            "red",
-        ))
-        return
-
-    # Persist
-    stages = meta.setdefault("triage_stages", {})
-    cleared = record_organize_stage(
-        stages,
         report=report,
-        issue_count=len(open_review_ids),
+        attestation=attestation,
+        is_reuse=is_reuse,
+        services=resolved_services,
+    )
+    if validated is None:
+        return
+    manual_clusters, report = validated
+    cleared, stages = _persist_organize_stage(
+        plan=plan,
+        meta=meta,
+        report=report,
+        open_review_ids=open_review_ids,
         existing_stage=existing_stage,
         is_reuse=is_reuse,
+        manual_clusters=manual_clusters,
+        services=resolved_services,
     )
-
-    resolved_services.save_plan(plan)
-
-    resolved_services.append_log_entry(
-        plan,
-        "triage_organize",
-        actor="user",
-        detail={"cluster_count": len(manual_clusters), "reuse": is_reuse},
-    )
-    resolved_services.save_plan(plan)
 
     print_organize_result(
         manual_clusters=manual_clusters,
