@@ -34,10 +34,8 @@ pytest-full.xml
 .importlinter
 
 # Local agent-generated skills (keep canonical copies under docs/)
-/.claude/skills/
-/.agents/skills/
+.claude/
 /skills/
-.claude/worktrees/
 CLAUDE.md
 tasks/
 scripts/
