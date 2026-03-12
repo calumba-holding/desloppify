@@ -14,6 +14,11 @@ def test_parse_test_import_specs_extracts_includes():
     assert cxx_cov.parse_test_import_specs(content) == ["widget.hpp", "gtest/gtest.h"]
 
 
+def test_has_testable_logic_accepts_function_definitions_without_regex_crash():
+    assert cxx_cov.has_testable_logic("widget.cpp", "int widget() { return 1; }\n") is True
+    assert cxx_cov.has_testable_logic("widget_test.cpp", "int widget() { return 1; }\n") is False
+
+
 def test_map_test_to_source_and_resolve_import_spec(tmp_path):
     source = tmp_path / "src" / "widget.cpp"
     header = tmp_path / "src" / "widget.hpp"

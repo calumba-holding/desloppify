@@ -15,19 +15,17 @@ TEST_FUNCTION_RE = re.compile(r"\bTEST(?:_F|_P)?\s*\(")
 BARREL_BASENAMES: set[str] = set()
 _INCLUDE_RE = re.compile(r'(?m)^\s*#include\s*[<"]([^>"]+)[>"]')
 _SOURCE_EXTENSIONS = (".c", ".cc", ".cpp", ".cxx")
+_TESTABLE_LOGIC_RE = re.compile(
+    r"\b(?:class|struct|enum|namespace)\b|^\s*(?:inline\s+|static\s+)?[A-Za-z_]\w*(?:[\s*&:<>]+[A-Za-z_]\w*)*\s+\w+\s*\(",
+    re.MULTILINE,
+ )
 
 
 def has_testable_logic(filepath: str, content: str) -> bool:
     """Return True when a file looks like it contains runtime logic."""
     if filepath.endswith(("_test.c", "_test.cc", "_test.cpp", "_test.cxx")):
         return False
-    return bool(
-        re.search(
-            r"\b(?:class|struct|enum|namespace)\b|"
-            r"(?m)^\s*(?:inline\s+|static\s+)?[A-Za-z_]\w*(?:[\s*&:<>]+[A-Za-z_]\w*)*\s+\w+\s*\(",
-            content,
-        )
-    )
+    return bool(_TESTABLE_LOGIC_RE.search(content))
 
 
 def _match_candidate(candidate: Path, production_files: set[str]) -> str | None:
