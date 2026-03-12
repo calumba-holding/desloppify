@@ -242,11 +242,11 @@ let add a b =
 class TestNewLanguageIntegration:
     def test_javascript_registered(self):
         import desloppify.languages.javascript  # noqa: F401
-        from desloppify.languages._framework.generic_capabilities import (
+        from desloppify.languages._framework.generic_support.capabilities import (
             empty_dep_graph,
             noop_extract_functions,
         )
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("javascript")
         assert lang.extract_functions is not noop_extract_functions
@@ -255,21 +255,21 @@ class TestNewLanguageIntegration:
 
     def test_erlang_registered(self):
         import desloppify.languages.erlang  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("erlang")
         assert ".erl" in lang.extensions
 
     def test_ocaml_registered(self):
         import desloppify.languages.ocaml  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("ocaml")
         assert ".ml" in lang.extensions
 
     def test_fsharp_registered(self):
         import desloppify.languages.fsharp  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("fsharp")
         assert ".fs" in lang.extensions
@@ -790,7 +790,7 @@ class TestSignatureVariance:
 class TestPhaseWiring:
     def test_go_has_ast_smells_phase(self):
         import desloppify.languages.go  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("go")
         labels = [p.label for p in lang.phases]
@@ -798,7 +798,7 @@ class TestPhaseWiring:
 
     def test_go_has_cohesion_phase(self):
         import desloppify.languages.go  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("go")
         labels = [p.label for p in lang.phases]
@@ -806,7 +806,7 @@ class TestPhaseWiring:
 
     def test_go_has_signature_phase(self):
         import desloppify.languages.go  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("go")
         labels = [p.label for p in lang.phases]
@@ -814,7 +814,7 @@ class TestPhaseWiring:
 
     def test_go_has_unused_imports_phase(self):
         import desloppify.languages.go  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("go")
         labels = [p.label for p in lang.phases]
@@ -824,7 +824,7 @@ class TestPhaseWiring:
         """Bash has import_query but it resolves source commands.
         Check unused imports phase IS present for bash."""
         import desloppify.languages.bash  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("bash")
         labels = [p.label for p in lang.phases]

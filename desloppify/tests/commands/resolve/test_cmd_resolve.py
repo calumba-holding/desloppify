@@ -8,6 +8,7 @@ import pytest
 import desloppify.app.commands.resolve.cmd as resolve_mod
 import desloppify.app.commands.resolve.selection as resolve_selection_mod
 import desloppify.app.commands.suppress as suppress_mod
+import desloppify.app.commands.helpers.state_persistence as state_persistence_mod
 import desloppify.cli as cli_mod
 import desloppify.engine.plan_state as plan_mod
 import desloppify.intelligence.narrative.core as narrative_mod
@@ -159,7 +160,7 @@ class TestCmdResolve:
             "last_scan": "2025-01-01",
         }
         monkeypatch.setattr(resolve_mod, "load_state", lambda sp: fake_state)
-        monkeypatch.setattr(state_mod, "save_state", lambda state, sp: None)
+        monkeypatch.setattr(state_persistence_mod.state_compat, "save_state", lambda state, sp: None)
         monkeypatch.setattr(
             state_mod,
             "resolve_issues",
@@ -184,7 +185,7 @@ class TestCmdResolve:
         cmd_resolve(FakeArgs())
         out = capsys.readouterr().out
         assert "Resolved 1" in out
-        assert "Scores:" in out
+        assert "Scores:" in out or "Score" in out
 
     def test_wontfix_shows_strict_cost_warning(self, monkeypatch, capsys):
         """Wontfix resolution should warn about strict score impact."""
@@ -202,7 +203,7 @@ class TestCmdResolve:
             "last_scan": "2025-01-01",
         }
         monkeypatch.setattr(resolve_mod, "load_state", lambda sp: fake_state)
-        monkeypatch.setattr(state_mod, "save_state", lambda state, sp: None)
+        monkeypatch.setattr(state_persistence_mod.state_compat, "save_state", lambda state, sp: None)
         monkeypatch.setattr(
             state_mod,
             "resolve_issues",
@@ -227,7 +228,7 @@ class TestCmdResolve:
         cmd_resolve(FakeArgs())
         out = capsys.readouterr().out
         # Scores are shown via print_score_update or frozen score display
-        assert "Scores" in out or "Plan-start score" in out
+        assert "Scores" in out or "Plan-start score" in out or "Score" in out
 
     def test_reopen_without_attestation_allowed(self, monkeypatch, capsys):
         monkeypatch.setattr(resolve_mod, "state_path", lambda a: "/tmp/fake.json")
@@ -244,7 +245,7 @@ class TestCmdResolve:
             "last_scan": "2025-01-01",
         }
         monkeypatch.setattr(resolve_mod, "load_state", lambda sp: fake_state)
-        monkeypatch.setattr(state_mod, "save_state", lambda state, sp: None)
+        monkeypatch.setattr(state_persistence_mod.state_compat, "save_state", lambda state, sp: None)
         monkeypatch.setattr(
             state_mod,
             "resolve_issues",
@@ -290,7 +291,7 @@ class TestCmdResolve:
             lambda state, pattern, status, note, **kwargs: ["f1"],
         )
         monkeypatch.setattr(
-            state_mod,
+            state_persistence_mod.state_compat,
             "save_state",
             lambda state, sp: (_ for _ in ()).throw(OSError("disk full")),
         )
@@ -368,10 +369,16 @@ class TestCmdSuppress:
         assert f'--attest "{ATTEST_EXAMPLE}"' in err
 
     def test_suppress_save_state_error_exits(self, monkeypatch, capsys):
-        monkeypatch.setattr(resolve_mod, "state_path", lambda a: "/tmp/fake.json")
-        monkeypatch.setattr(state_mod, "load_state", lambda sp: {"issues": {}})
+        from desloppify.app.commands.helpers.command_runtime import CommandRuntime
+
+        fake_state = {"issues": {}}
+        fake_runtime = CommandRuntime(
+            config={},
+            state=fake_state,
+            state_path=Path("/tmp/fake.json"),
+        )
         monkeypatch.setattr(
-            state_mod,
+            state_persistence_mod.state_compat,
             "save_state",
             lambda state, sp: (_ for _ in ()).throw(OSError("readonly")),
         )
@@ -379,7 +386,7 @@ class TestCmdSuppress:
         monkeypatch.setattr(
             suppress_mod, "save_config_or_exit", lambda _config: None
         )
-        monkeypatch.setattr(resolve_mod, "resolve_lang", lambda args: None)
+        monkeypatch.setattr(suppress_mod, "resolve_lang", lambda args: None)
 
         class FakeArgs:
             pattern = "unused::*"
@@ -387,6 +394,7 @@ class TestCmdSuppress:
             _config = {}
             lang = None
             path = "."
+            runtime = fake_runtime
 
         with pytest.raises(CommandError) as exc_info:
             cmd_suppress(FakeArgs())

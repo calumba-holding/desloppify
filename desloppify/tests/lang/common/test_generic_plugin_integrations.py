@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from desloppify.languages._framework.generic import capability_report, generic_lang
+from desloppify.languages._framework.generic_support.core import capability_report, generic_lang
 from desloppify.languages._framework.generic_parts.tool_factories import (
     make_generic_fixer,
 )
@@ -18,7 +18,7 @@ from desloppify.languages._framework.generic_parts.tool_factories import (
 def _cleanup_registry():
     """Auto-cleanup generic plugins registered during a test."""
     from desloppify.languages._framework import registry_state
-    from desloppify.languages._framework.discovery import load_all
+    from desloppify.languages._framework.registry.discovery import load_all
 
     load_all()
     before = set(registry_state.all_keys())

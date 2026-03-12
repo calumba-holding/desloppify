@@ -549,7 +549,7 @@ class TestGracefulDegradation:
     def test_generic_lang_stubs_without_treesitter(self):
         """When is_available() is False, generic_lang should use stubs."""
         import desloppify.languages._framework.treesitter as ts_mod
-        from desloppify.languages._framework.generic_capabilities import (
+        from desloppify.languages._framework.generic_support.capabilities import (
             empty_dep_graph,
             noop_extract_functions,
         )
@@ -557,7 +557,7 @@ class TestGracefulDegradation:
         saved = ts_mod._AVAILABLE
         ts_mod._AVAILABLE = False
         try:
-            from desloppify.languages._framework.generic import generic_lang
+            from desloppify.languages._framework.generic_support.core import generic_lang
             from desloppify.languages._framework.treesitter._specs_compiled import GO_SPEC
 
             cfg = generic_lang(
@@ -598,7 +598,7 @@ class TestGracefulDegradation:
 class TestGenericLangIntegration:
     def test_go_is_full_plugin(self):
         import desloppify.languages.go  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("go")
         assert lang.extract_functions is not None
@@ -606,7 +606,7 @@ class TestGenericLangIntegration:
 
     def test_go_phases_include_structural(self):
         import desloppify.languages.go  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("go")
         phase_labels = [p.label for p in lang.phases]
@@ -616,7 +616,7 @@ class TestGenericLangIntegration:
 
     def test_rust_is_full_plugin(self):
         import desloppify.languages.rust  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("rust")
         assert lang.extract_functions is not None
@@ -624,7 +624,7 @@ class TestGenericLangIntegration:
 
     def test_rust_phases_include_structural(self):
         import desloppify.languages.rust  # noqa: F401
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         lang = get_lang("rust")
         phase_labels = [p.label for p in lang.phases]
@@ -1170,7 +1170,7 @@ class TestEslintParser:
     def test_parse_eslint_output(self):
         from pathlib import Path
 
-        from desloppify.languages._framework.generic import parse_eslint
+        from desloppify.languages._framework.generic_support.core import parse_eslint
 
         output = """[
             {
@@ -1199,7 +1199,7 @@ class TestEslintParser:
 
         import pytest
 
-        from desloppify.languages._framework.generic import parse_eslint
+        from desloppify.languages._framework.generic_support.core import parse_eslint
         from desloppify.languages._framework.generic_parts.parsers import (
             ToolParserError,
         )
@@ -1210,7 +1210,7 @@ class TestEslintParser:
     def test_parse_empty_messages(self):
         from pathlib import Path
 
-        from desloppify.languages._framework.generic import parse_eslint
+        from desloppify.languages._framework.generic_support.core import parse_eslint
 
         output = '[{"filePath": "/src/clean.js", "messages": []}]'
         assert parse_eslint(output, Path("/src")) == []

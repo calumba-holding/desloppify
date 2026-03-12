@@ -109,7 +109,7 @@ def test_organize_records_zero_issue_noop_batch(monkeypatch) -> None:
     services, saved, logs = _services(plan, state={"issues": {}})
     monkeypatch.setattr(organize_mod, "has_triage_in_queue", lambda _plan: True)
     monkeypatch.setattr(organize_mod, "_require_reflect_stage_for_organize", lambda _stages: True)
-    monkeypatch.setattr(organize_mod, "_auto_confirm_reflect_for_organize", lambda **_kwargs: True)
+    monkeypatch.setattr(organize_mod, "auto_confirm_reflect_for_organize", lambda **_kwargs: True)
 
     organize_mod._cmd_stage_organize(
         _args(

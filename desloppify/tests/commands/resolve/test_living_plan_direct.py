@@ -89,4 +89,4 @@ def test_update_living_plan_after_resolve_handles_plan_exceptions(monkeypatch, c
     err = capsys.readouterr().err
     assert plan is None
     assert ctx.cluster_name is None
-    assert "could not update living plan" in err
+    assert "could not be loaded" in err

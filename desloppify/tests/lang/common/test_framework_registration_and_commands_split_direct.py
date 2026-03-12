@@ -19,12 +19,12 @@ import desloppify.engine.planning.scan as planning_scan_mod
 import desloppify.languages as languages_mod
 import desloppify.languages.framework as public_framework_mod
 import desloppify.languages._framework as framework_root_mod
-import desloppify.languages._framework.commands_base_registry as registry_cmd_mod
-import desloppify.languages._framework.commands_base_scaffold as scaffold_mod
-import desloppify.languages._framework.generic_capabilities as capabilities_mod
-import desloppify.languages._framework.generic_registration as registration_mod
+import desloppify.languages._framework.commands.registry as registry_cmd_mod
+import desloppify.languages._framework.commands.scaffold as scaffold_mod
+import desloppify.languages._framework.generic_support.capabilities as capabilities_mod
+import desloppify.languages._framework.generic_support.registration as registration_mod
 import desloppify.languages._framework.registration as framework_registration_mod
-import desloppify.languages._framework.runtime_accessors as accessors_mod
+import desloppify.languages._framework.runtime_support.accessors as accessors_mod
 import desloppify.languages._framework.treesitter._specs as treesitter_specs_legacy_mod
 import desloppify.languages._framework.treesitter.analysis.cohesion as treesitter_cohesion_mod
 import desloppify.languages._framework.treesitter.imports.cache as treesitter_cache_mod
@@ -87,12 +87,11 @@ def test_public_framework_facade_exposes_operational_accessors() -> None:
 
 def test_languages_registry_surface_keeps_legacy_exports_compat_only() -> None:
     source = inspect.getsource(languages_mod)
-    assert "registration api plus compatibility exports" in source.lower()
-    assert "compatibility owner" in source.lower()
-    assert "removal target" in source.lower()
+    assert "language registration api focused on canonical framework boundaries" in source.lower()
     assert "desloppify.languages.framework" in source
+    assert "__getattr__" not in source
     assert "registry_state" not in languages_mod.__all__
-    assert hasattr(languages_mod, "registry_state")
+    assert not hasattr(languages_mod, "registry_state")
 
 
 def test_langs_command_uses_public_framework_facade() -> None:

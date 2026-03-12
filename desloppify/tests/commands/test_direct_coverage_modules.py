@@ -50,7 +50,7 @@ import desloppify.intelligence.review._context.structure as review_context_struc
 import desloppify.intelligence.review.dimensions.holistic as review_dimensions_holistic
 import desloppify.intelligence.review.dimensions.validation as review_dimensions_validation
 import desloppify.languages as lang_pkg
-import desloppify.languages._framework.discovery as lang_discovery
+import desloppify.languages._framework.registry.discovery as lang_discovery
 import desloppify.languages._framework.scaffold_move as dart_move
 import desloppify.languages._framework.scaffold_move as gdscript_move
 import desloppify.languages.csharp.extractors as csharp_extractors
@@ -86,7 +86,7 @@ import desloppify.languages.typescript.detectors.deps.runtime as ts_deps_runtime
 import desloppify.languages.typescript.extractors_components as ts_extractors_components
 from desloppify.engine._work_queue.models import QueueBuildOptions, QueueVisibility
 from desloppify.intelligence.review import prepare_batches_builders as review_prepare_batches
-from desloppify.languages import resolution as lang_resolution
+from desloppify.languages._framework.registry import resolution as lang_resolution
 from desloppify.languages.csharp import move as csharp_move
 from desloppify.languages.csharp import review as csharp_review
 from desloppify.languages.typescript import review as ts_review

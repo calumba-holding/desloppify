@@ -153,11 +153,11 @@ def _move_template() -> str:
     return (
         '"""Move helpers for language plugin scaffolding."""\n\n'
         "from __future__ import annotations\n\n"
-        "from .._framework.commands_base import (\n"
+        "from .._framework.commands.base import (\n"
         "    scaffold_find_replacements,\n"
         "    scaffold_verify_hint,\n"
         ")\n"
-        "from .._framework.commands_base import (\n"
+        "from .._framework.commands.base import (\n"
         "    scaffold_find_self_replacements,\n"
         ")\n"
         "\n"

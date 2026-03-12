@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from desloppify.languages._framework.generic import (
+from desloppify.languages._framework.generic_support.core import (
     capability_report,
     generic_lang,
     make_file_finder,
@@ -43,7 +43,7 @@ def _cleanup_registry():
     ``@register_lang`` decorators won't re-fire on re-import).
     """
     from desloppify.languages._framework import registry_state
-    from desloppify.languages._framework.discovery import load_all
+    from desloppify.languages._framework.registry.discovery import load_all
 
     # Ensure built-in plugins are loaded before snapshotting, so the
     # snapshot includes them and cleanup only removes test-specific entries.
@@ -394,7 +394,7 @@ class TestGenericLang:
 
     def test_get_lang_returns_instance(self):
         from desloppify.languages._framework.base.types import LangConfig
-        from desloppify.languages._framework.resolution import get_lang
+        from desloppify.languages._framework.registry.resolution import get_lang
 
         cfg = generic_lang(
             name="test_generic_lang_2",

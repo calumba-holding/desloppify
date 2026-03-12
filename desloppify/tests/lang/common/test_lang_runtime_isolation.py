@@ -8,7 +8,7 @@ import pytest
 
 from desloppify.engine.planning.scan import PlanScanOptions, generate_issues
 from desloppify.languages._framework.base.types import DetectorPhase
-from desloppify.languages._framework.runtime import (
+from desloppify.languages._framework.runtime_support.runtime import (
     LangRun,
     LangRunOverrides,
     make_lang_run,

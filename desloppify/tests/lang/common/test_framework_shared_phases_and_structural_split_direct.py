@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import desloppify.languages._framework.base.shared_phases_review as review_mod
 import desloppify.languages._framework.base.shared_phases_structural as structural_mod
-import desloppify.languages._framework.generic_structural as generic_structural_mod
+import desloppify.languages._framework.generic_support.structural as generic_structural_mod
 from desloppify.engine.policy.zones import Zone
 
 

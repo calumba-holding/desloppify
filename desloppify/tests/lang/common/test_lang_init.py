@@ -12,27 +12,24 @@ from desloppify.languages import (
     available_langs,
     get_lang,
     register_lang,
-    registry_state,
 )
 from desloppify.languages._framework.base.types import DetectorPhase, LangConfig
-from desloppify.languages._framework.discovery import load_all
+from desloppify.languages._framework.registry.discovery import load_all
+from desloppify.languages._framework.registry import state as registry_state
 
 # ── register_lang ────────────────────────────────────────────
 
 
-def test_legacy_framework_exports_are_lazy_compatibility_lookups():
-    """Legacy framework modules stay available without becoming live-bound exports."""
+def test_languages_module_does_not_re_export_framework_runtime_modules():
+    """The public languages module should stay focused on registration APIs."""
     assert "discovery" not in vars(lang_mod)
     assert "registry_state" not in vars(lang_mod)
-
-    discovery_mod = lang_mod.discovery
-
-    assert callable(discovery_mod.load_all)
-    assert lang_mod.registry_state is registry_state
-    assert "discovery" not in vars(lang_mod)
-    assert "registry_state" not in vars(lang_mod)
-    assert "discovery" in dir(lang_mod)
-    assert "registry_state" in dir(lang_mod)
+    assert "discovery" not in dir(lang_mod)
+    assert "registry_state" not in dir(lang_mod)
+    with pytest.raises(AttributeError):
+        _ = lang_mod.discovery
+    with pytest.raises(AttributeError):
+        _ = lang_mod.registry_state
 
 
 def test_register_lang_adds_to_registry():
