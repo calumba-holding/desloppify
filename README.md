@@ -12,7 +12,7 @@ That score generates a scorecard badge for your GitHub profile or README:
 
 <img src="assets/scorecard.png" width="100%">
 
-Currently supports 28 languages — full plugin depth for TypeScript, Python, C#, Dart, GDScript, and Go; generic linter + tree-sitter support for Rust, Ruby, Java, Kotlin, and 17 more.
+Currently supports 28 languages — full plugin depth for TypeScript, Python, C#, C++, Dart, GDScript, and Go; generic linter + tree-sitter support for Rust, Ruby, Java, Kotlin, and 16 more.
 
 ## For your agent's consideration...
 

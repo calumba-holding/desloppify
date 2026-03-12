@@ -11,8 +11,11 @@ from desloppify.languages._framework.base.phase_builders import (
     shared_subjective_duplicates_tail,
 )
 from desloppify.languages._framework.base.types import DetectorPhase, LangConfig
+from desloppify.languages._framework.generic import make_tool_phase
 from desloppify.languages._framework.registration import register_full_plugin
+from desloppify.languages._framework.treesitter.phases import all_treesitter_phases
 from desloppify.languages.cxx import test_coverage as cxx_test_coverage_hooks
+from desloppify.languages.cxx._helpers import build_cxx_dep_graph
 from desloppify.languages.cxx._zones import CXX_ENTRY_PATTERNS, CXX_ZONE_RULES
 from desloppify.languages.cxx.commands import get_detect_commands
 from desloppify.languages.cxx.extractors import (
@@ -30,7 +33,6 @@ from desloppify.languages.cxx.review import (
     api_surface,
     module_patterns,
 )
-from desloppify.languages.cxx._helpers import build_cxx_dep_graph
 
 
 class CxxConfig(LangConfig):
@@ -48,6 +50,14 @@ class CxxConfig(LangConfig):
             phases=[
                 DetectorPhase("Structural analysis", phase_structural),
                 DetectorPhase("Coupling + cycles + orphaned", phase_coupling),
+                make_tool_phase(
+                    "cppcheck",
+                    "cppcheck --template='{file}:{line}: {severity}: {message}' --enable=all --quiet .",
+                    "gnu",
+                    "cppcheck_issue",
+                    tier=2,
+                ),
+                *all_treesitter_phases("cpp"),
                 detector_phase_signature(),
                 detector_phase_test_coverage(),
                 detector_phase_security(),

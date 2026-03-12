@@ -2,19 +2,40 @@
 
 from __future__ import annotations
 
+import os
 import re
+from pathlib import Path
+
+from desloppify.base.text_utils import strip_c_style_comments
 
 ASSERT_PATTERNS = [re.compile(r"\bASSERT_[A-Z_]+\b"), re.compile(r"\bEXPECT_[A-Z_]+\b")]
 MOCK_PATTERNS = [re.compile(r"\bMOCK_METHOD\b"), re.compile(r"\bFakeIt\b")]
 SNAPSHOT_PATTERNS: list[re.Pattern[str]] = []
 TEST_FUNCTION_RE = re.compile(r"\bTEST(?:_F|_P)?\s*\(")
 BARREL_BASENAMES: set[str] = set()
+_INCLUDE_RE = re.compile(r'(?m)^\s*#include\s*[<"]([^>"]+)[>"]')
+_SOURCE_EXTENSIONS = (".c", ".cc", ".cpp", ".cxx")
 
 
 def has_testable_logic(filepath: str, content: str) -> bool:
     """Return True when a file looks like it contains runtime logic."""
-    del filepath
-    return bool(re.search(r"\b(?:class|struct|enum|namespace)\b", content))
+    if filepath.endswith(("_test.c", "_test.cc", "_test.cpp", "_test.cxx")):
+        return False
+    return bool(
+        re.search(
+            r"\b(?:class|struct|enum|namespace)\b|"
+            r"(?m)^\s*(?:inline\s+|static\s+)?[A-Za-z_]\w*(?:[\s*&:<>]+[A-Za-z_]\w*)*\s+\w+\s*\(",
+            content,
+        )
+    )
+
+
+def _match_candidate(candidate: Path, production_files: set[str]) -> str | None:
+    resolved = str(candidate.resolve())
+    normalized = {str(Path(path).resolve()): path for path in production_files}
+    if resolved in normalized:
+        return normalized[resolved]
+    return None
 
 
 def resolve_import_spec(
@@ -22,8 +43,26 @@ def resolve_import_spec(
     test_path: str,
     production_files: set[str],
 ) -> str | None:
-    """Best-effort include resolution placeholder."""
-    del spec, test_path, production_files
+    """Resolve include-like specs used in C/C++ tests."""
+    cleaned = (spec or "").strip().strip("\"'")
+    if not cleaned:
+        return None
+
+    test_file = Path(test_path).resolve()
+    candidates: list[Path] = []
+    if cleaned.startswith("./") or cleaned.startswith("../"):
+        candidates.append((test_file.parent / cleaned).resolve())
+    else:
+        candidates.append((test_file.parent / cleaned).resolve())
+        leaf = Path(cleaned).name
+        for production in production_files:
+            if Path(production).name == leaf:
+                return production
+
+    for candidate in candidates:
+        matched = _match_candidate(candidate, production_files)
+        if matched:
+            return matched
     return None
 
 
@@ -35,22 +74,51 @@ def resolve_barrel_reexports(filepath: str, production_files: set[str]) -> set[s
 
 def parse_test_import_specs(content: str) -> list[str]:
     """Return include-like specs from test content."""
-    del content
-    return []
+    return [match.group(1).strip() for match in _INCLUDE_RE.finditer(content)]
 
 
 def map_test_to_source(test_path: str, production_set: set[str]) -> str | None:
-    """Placeholder convention mapper for Task 1 scaffold."""
-    del test_path, production_set
+    """Map a C/C++ test file to its likely source counterpart."""
+    basename = os.path.basename(test_path)
+    src_name = strip_test_markers(basename)
+    if not src_name:
+        return None
+
+    test_file = Path(test_path).resolve()
+    candidates = [
+        test_file.with_name(src_name),
+        test_file.parent.parent / src_name,
+        test_file.parent.parent / "src" / src_name,
+        test_file.parent.parent / "source" / src_name,
+        test_file.parent.parent / "lib" / src_name,
+    ]
+    for candidate in candidates:
+        matched = _match_candidate(candidate, production_set)
+        if matched:
+            return matched
+
+    for production in production_set:
+        if Path(production).name == src_name and not re.search(r"(?:^|[\\/])tests?(?:[\\/]|$)", production):
+            return production
     return None
 
 
 def strip_test_markers(basename: str) -> str | None:
-    """Placeholder basename mapper for Task 1 scaffold."""
-    del basename
+    """Strip common C/C++ test-name markers to derive source basename."""
+    stem, ext = os.path.splitext(basename)
+    if ext.lower() not in _SOURCE_EXTENSIONS:
+        return None
+    if stem.endswith("_test"):
+        return f"{stem[:-5]}{ext}"
+    if stem.startswith("test_"):
+        return f"{stem[5:]}{ext}"
+    if stem.endswith("Tests"):
+        return f"{stem[:-5]}{ext}"
+    if stem.endswith("Test"):
+        return f"{stem[:-4]}{ext}"
     return None
 
 
 def strip_comments(content: str) -> str:
-    """Return content unchanged until the coverage hooks are implemented."""
-    return content
+    """Strip C-style comments while preserving string literals."""
+    return strip_c_style_comments(content)

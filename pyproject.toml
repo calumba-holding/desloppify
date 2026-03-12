@@ -66,13 +66,14 @@ include-package-data = false
 "desloppify.languages.python" = ["review_data/*.json"]
 "desloppify.languages.typescript" = ["review_data/*.json"]
 "desloppify.languages.csharp" = ["review_data/*.json"]
+"desloppify.languages.cxx" = ["review_data/*.json"]
 "desloppify.languages.dart" = ["review_data/*.json"]
 "desloppify.languages.gdscript" = ["review_data/*.json"]
 "desloppify.languages.go" = ["review_data/*.json"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ['desloppify/tests', 'desloppify/languages/python/tests', 'desloppify/languages/typescript/tests', 'desloppify/languages/csharp/tests', 'desloppify/languages/dart/tests', 'desloppify/languages/gdscript/tests', 'desloppify/languages/go/tests']
+testpaths = ['desloppify/tests', 'desloppify/languages/python/tests', 'desloppify/languages/typescript/tests', 'desloppify/languages/csharp/tests', 'desloppify/languages/cxx/tests', 'desloppify/languages/dart/tests', 'desloppify/languages/gdscript/tests', 'desloppify/languages/go/tests']
 norecursedirs = ["desloppify/tests/fixtures"]
 
 [tool.ruff]

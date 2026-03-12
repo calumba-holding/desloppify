@@ -338,10 +338,8 @@ def state_lock(
                 break
             except OSError as exc:
                 if exc.errno not in _LOCK_RETRY_ERRNOS:
-                    os.close(lock_fd)
                     raise
                 if time.monotonic() >= deadline:
-                    os.close(lock_fd)
                     raise TimeoutError(
                         f"Could not acquire state lock within {timeout}s. "
                         "Another desloppify command may be running."
@@ -361,4 +359,5 @@ def state_lock(
             _release_state_lock(lock_fd)
         except OSError:
             pass
-        os.close(lock_fd)
+        with contextlib.suppress(OSError):
+            os.close(lock_fd)

@@ -1,6 +1,6 @@
 # Languages
 
-Desloppify supports 28 languages through a plugin system with two tiers: **full plugins** (6) with hand-written detectors and subjective review, and **generic plugins** (22) that wrap external linters and optionally use tree-sitter for AST analysis.
+Desloppify supports 28 languages through a plugin system with two tiers: **full plugins** (7) with hand-written detectors and subjective review, and **generic plugins** (21) that wrap external linters and optionally use tree-sitter for AST analysis.
 
 ## Full Plugins
 
@@ -11,6 +11,7 @@ These have custom detectors, language-specific smell analysis, subjective review
 | **Python** | `python/` | AST smell detection, ruff/bandit adapters, import-linter, unused detection, security, auto-fix |
 | **TypeScript** | `typescript/` | React-aware detectors, knip adapter, 7 auto-fixers, props/exports/concerns analysis |
 | **C#/.NET** | `csharp/` | Structural + coupling + security, dotnet-based dep analysis |
+| **C/C++** | `cxx/` | `compile_commands.json`-aware dep analysis, cppcheck phase, tree-sitter structural signals |
 | **Dart** | `dart/` | Flutter-aware, pubspec integration, test coverage mapping |
 | **GDScript** | `gdscript/` | Godot scene-aware, tree-sitter phases, shared framework helpers |
 | **Go** | `go/` | golangci-lint + go vet adapters, regex function extraction, test coverage mapping |
@@ -33,7 +34,6 @@ These are single-file plugins (~20-40 lines) that call `generic_lang()` with ext
 | Elixir | `elixir/` | credo | functions, imports |
 | Haskell | `haskell/` | hlint | functions, imports |
 | JavaScript | `javascript/` | eslint | functions, methods, classes, imports |
-| C/C++ | `cxx/` | cppcheck | functions, classes, includes |
 | Bash | `bash/` | shellcheck | functions, source imports |
 | Lua | `lua/` | luacheck | functions, imports |
 | Perl | `perl/` | perlcritic | subroutines, imports |
