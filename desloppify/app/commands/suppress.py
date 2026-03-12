@@ -10,13 +10,13 @@ from desloppify.app.commands.helpers.attestation import (
     validate_attestation,
 )
 from desloppify.app.commands.helpers.lang import resolve_lang
-from desloppify.app.commands.helpers.persist import (
+from desloppify.app.commands.helpers.state_persistence import (
     save_config_or_exit,
     save_state_or_exit,
 )
 from desloppify.app.commands.helpers.query import write_query
 from desloppify.app.commands.helpers.queue_progress import show_score_with_plan_context
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.base import config as config_mod
 from desloppify.base.exception_sets import CommandError
 from desloppify.base.output.terminal import colorize

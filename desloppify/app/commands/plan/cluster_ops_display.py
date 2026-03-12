@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.app.commands.plan.shared.cluster_membership import cluster_issue_ids
 from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan_state import load_plan

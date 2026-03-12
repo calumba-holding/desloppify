@@ -7,7 +7,7 @@ import sys
 from dataclasses import dataclass
 
 from desloppify.app.commands.helpers.lang import resolve_lang
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.app.commands.helpers.state import require_scan_metrics
 from desloppify.base.exception_sets import CommandError
 

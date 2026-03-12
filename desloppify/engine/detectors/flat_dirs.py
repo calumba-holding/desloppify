@@ -23,15 +23,6 @@ from ._flat_dirs.entries import (
 )
 from ._flat_dirs.stats import all_tracked_dirs, build_dir_stats
 
-_DEFAULT_THIN_WRAPPER_NAMES = DEFAULT_THIN_WRAPPER_NAMES
-_resolve_detection_settings = resolve_detection_settings
-_build_dir_stats = build_dir_stats
-_all_tracked_dirs = all_tracked_dirs
-_is_overloaded = is_overloaded
-_fragmentation_entry = fragmentation_entry
-_thin_wrapper_entry = thin_wrapper_entry
-_sort_entries = sort_entries
-
 __all__ = [
     "FlatDirDetectionConfig",
     "THIN_WRAPPER_NAMES",

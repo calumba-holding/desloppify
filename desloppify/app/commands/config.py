@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.base.config import (
     CONFIG_SCHEMA,
     save_config,

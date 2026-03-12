@@ -7,7 +7,7 @@ import sys
 
 from desloppify.languages import framework as lang_api
 from desloppify.app.commands.helpers.lang import resolve_lang, resolve_lang_settings
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.app.commands.helpers.runtime_options import (
     LangRuntimeOptionsError,
     print_lang_runtime_options_error,

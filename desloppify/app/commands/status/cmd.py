@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.app.commands.helpers.state import require_issue_inventory
 from desloppify.engine._state.filtering import open_scope_breakdown
 from desloppify.engine._scoring.results.core import compute_health_breakdown

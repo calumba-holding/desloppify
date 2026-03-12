@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.app.commands.helpers.display import short_issue_id
+from desloppify.app.commands.helpers.issue_id_display import short_issue_id
 from desloppify.app.commands.review.importing.flags import imported_assessment_keys
 from desloppify.base.config import target_strict_score_from_config
 from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS

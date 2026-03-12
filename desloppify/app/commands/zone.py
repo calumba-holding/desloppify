@@ -7,7 +7,7 @@ from pathlib import Path
 
 from desloppify.app.commands.helpers.lang import resolve_lang
 from desloppify.app.commands.helpers.rendering import print_agent_plan
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.app.commands.helpers.state import state_path
 from desloppify.base import config as config_mod
 from desloppify.base.discovery.file_paths import rel

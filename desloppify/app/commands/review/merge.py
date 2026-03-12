@@ -8,7 +8,7 @@ from typing import Any, NamedTuple, TypedDict
 from desloppify import state as state_mod
 from desloppify.app.commands.helpers.query import write_query
 from desloppify.app.commands.helpers.queue_progress import show_score_with_plan_context
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.base.output.issues import issue_weight
 from desloppify.base.output.terminal import colorize
 from desloppify.engine.work_queue import list_open_review_issues

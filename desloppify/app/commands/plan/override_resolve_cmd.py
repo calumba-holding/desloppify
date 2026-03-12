@@ -11,7 +11,7 @@ from desloppify.app.commands.helpers.attestation import (
     validate_attestation,
     validate_note_length,
 )
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.app.commands.resolve.cmd import cmd_resolve
 from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.base.output.fallbacks import log_best_effort_failure

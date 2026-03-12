@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan_state import save_plan
 from desloppify.engine.plan_triage import collect_triage_input, detect_recurring_patterns

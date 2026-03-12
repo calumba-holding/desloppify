@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from desloppify import state as state_mod
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.base import config as config_mod
 from desloppify.base.discovery.file_paths import matches_exclusion
 from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS, CommandError

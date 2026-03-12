@@ -12,7 +12,7 @@ from typing import Any
 
 from desloppify.app.cli_support.parser import create_parser as _create_parser
 from desloppify.app.commands.helpers.lang import resolve_lang
-from desloppify.app.commands.helpers.runtime import CommandRuntime
+from desloppify.app.commands.helpers.command_runtime import CommandRuntime
 from desloppify.app.commands.helpers.state import state_path
 from desloppify.app.commands.registry import CommandHandler, get_command_handlers
 from desloppify.base.config import load_config

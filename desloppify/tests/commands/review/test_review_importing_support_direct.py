@@ -678,7 +678,7 @@ def test_refresh_scorecard_after_import_skips_subjective_only_state(monkeypatch)
 
 def test_report_review_import_outcome_writes_query_payload(monkeypatch) -> None:
     captured: list[dict] = []
-    monkeypatch.setattr(results_mod.narrative_mod, "compute_narrative", lambda *_a, **_k: {"summary": "ok"})
+    monkeypatch.setattr(results_mod.narrative_core, "compute_narrative", lambda *_a, **_k: {"summary": "ok"})
     monkeypatch.setattr(results_mod, "print_skipped_validation_details", lambda *_a, **_k: None)
     monkeypatch.setattr(results_mod, "print_assessments_summary", lambda *_a, **_k: None)
     monkeypatch.setattr(
@@ -715,7 +715,7 @@ def test_report_review_import_outcome_writes_query_payload(monkeypatch) -> None:
 
 
 def test_report_review_import_outcome_reports_provisional_warning(capsys, monkeypatch) -> None:
-    monkeypatch.setattr(results_mod.narrative_mod, "compute_narrative", lambda *_a, **_k: {})
+    monkeypatch.setattr(results_mod.narrative_core, "compute_narrative", lambda *_a, **_k: {})
     monkeypatch.setattr(results_mod, "print_skipped_validation_details", lambda *_a, **_k: None)
     monkeypatch.setattr(results_mod, "print_assessments_summary", lambda *_a, **_k: None)
     monkeypatch.setattr(
@@ -773,7 +773,7 @@ def test_plan_sync_source_preserves_scoped_sync_pipeline_contract() -> None:
 
 def test_results_source_preserves_query_and_narrative_contract() -> None:
     src = inspect.getsource(results_mod.report_review_import_outcome)
-    assert "narrative_mod.compute_narrative(" in src
+    assert "narrative_core.compute_narrative(" in src
     assert 'NarrativeContext(lang=lang_name, command="review")' in src
     assert 'print(colorize(f"\\n  {label} imported:", "bold"))' in src
     assert 'issue_count = int(diff.get("new", 0) or 0)' in src

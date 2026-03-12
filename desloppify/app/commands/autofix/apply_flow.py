@@ -11,7 +11,7 @@ from desloppify import state as state_mod
 from desloppify.app.commands.helpers.lang import resolve_lang
 from desloppify.app.commands.helpers.query import write_query
 from desloppify.app.commands.helpers.queue_progress import show_score_with_plan_context
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.app.commands.helpers.state import state_path
 from desloppify.base.discovery.file_paths import rel
 from desloppify.base.output.terminal import colorize

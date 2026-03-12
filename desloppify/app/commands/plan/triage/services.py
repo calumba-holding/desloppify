@@ -7,7 +7,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
-from desloppify.app.commands.helpers.runtime import CommandRuntime, command_runtime
+from desloppify.app.commands.helpers.command_runtime import (
+    CommandRuntime,
+    command_runtime,
+)
 from desloppify.engine.plan_state import (
     PlanModel,
     load_plan,

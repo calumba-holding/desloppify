@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from desloppify.languages.framework import LangRun
 
 from desloppify.app.commands.helpers.lang import resolve_lang, resolve_lang_settings
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.app.commands.helpers.runtime_options import resolve_lang_runtime_options
 from desloppify.base.config import target_strict_score_from_config
 from desloppify.app.commands.scan.coverage import (

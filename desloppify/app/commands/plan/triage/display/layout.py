@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from desloppify.app.commands.helpers.display import short_issue_id
+from desloppify.app.commands.helpers.issue_id_display import short_issue_id
 from desloppify.engine.plan_triage import (
     TRIAGE_CMD_CLUSTER_ADD,
     TRIAGE_CMD_CLUSTER_CREATE,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.app.commands.helpers.display import short_issue_id
+from desloppify.app.commands.helpers.issue_id_display import short_issue_id
 from desloppify.base.output.terminal import colorize
 
 from ..helpers import manual_clusters_with_issues

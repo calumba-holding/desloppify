@@ -10,7 +10,7 @@ from desloppify.app.commands.helpers.queue_progress import (
     plan_aware_queue_breakdown,
 )
 from desloppify.app.commands.helpers.rendering import print_agent_plan
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.app.commands.helpers.state import require_issue_inventory
 from desloppify.app.commands.plan.cluster import cmd_cluster_dispatch
 from desloppify.app.commands.plan.commit_log import cmd_commit_log_dispatch

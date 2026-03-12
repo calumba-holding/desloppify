@@ -1,30 +1,21 @@
-"""State scoring facade."""
+"""Legacy `desloppify.state_scoring` wrapper.
 
-from __future__ import annotations
+Prefer `desloppify.state_score_snapshot` in new code. This module stays as a
+compatibility entrypoint for older imports.
+"""
 
-from typing import NamedTuple
-
-from desloppify.engine._state.schema import StateModel
-from desloppify.engine._state.schema_scores import (
+from desloppify.state_score_snapshot import (
+    ScoreSnapshot,
     get_objective_score,
     get_overall_score,
     get_strict_score,
     get_verified_strict_score,
+    suppression_metrics,
 )
-from desloppify.engine._state.scoring import suppression_metrics
 
 
-class ScoreSnapshot(NamedTuple):
-    """All four canonical scores from a single state dict."""
-
-    overall: float | None
-    objective: float | None
-    strict: float | None
-    verified: float | None
-
-
-def score_snapshot(state: StateModel) -> ScoreSnapshot:
-    """Load all four canonical scores from *state* in one call."""
+def score_snapshot(state):
+    """Load all four canonical scores while honoring local monkeypatches."""
     return ScoreSnapshot(
         overall=get_overall_score(state),
         objective=get_objective_score(state),

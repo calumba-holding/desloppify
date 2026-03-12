@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import desloppify.intelligence.narrative.core as narrative_mod
-from desloppify import state as state_mod
+import desloppify.intelligence.narrative.core as narrative_core
+from desloppify import state_compat as state_compat
 from desloppify.app.commands.helpers.query import write_query
 from desloppify.app.commands.helpers.queue_progress import show_score_with_plan_context
-from desloppify.app.commands.scan.reporting import (
-    dimensions as reporting_dimensions_mod,
-)
+from desloppify.app.commands.scan.reporting import dimensions as reporting_dimensions
 from desloppify.base.config import target_strict_score_from_config
 from desloppify.base.output.terminal import colorize
 from desloppify.intelligence.narrative.core import NarrativeContext
@@ -34,7 +32,7 @@ def report_review_import_outcome(
     scorecard_subjective_at_target_fn,
 ) -> None:
     """Render review import output and refresh query.json."""
-    narrative = narrative_mod.compute_narrative(
+    narrative = narrative_core.compute_narrative(
         state,
         NarrativeContext(lang=lang_name, command="review"),
     )
@@ -69,10 +67,10 @@ def report_review_import_outcome(
     at_target = print_review_import_scores_and_integrity(
         state,
         config or {},
-        state_mod=state_mod,
+        state_mod=state_compat,
         target_strict_score_from_config_fn=target_strict_score_from_config,
         subjective_at_target_fn=scorecard_subjective_at_target_fn,
-        subjective_rerun_command_fn=reporting_dimensions_mod.subjective_rerun_command,
+        subjective_rerun_command_fn=reporting_dimensions.subjective_rerun_command,
         colorize_fn=colorize,
     )
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from desloppify.app.commands.helpers.display import short_issue_id
+from desloppify.app.commands.helpers.issue_id_display import short_issue_id
 from desloppify.base.output.terminal import colorize
 from desloppify.base.output.user_message import print_user_message
 

@@ -9,7 +9,7 @@ from desloppify.app.commands.helpers.queue_progress import (
     QueueBreakdown,
     format_queue_headline,
 )
-from desloppify.app.commands.helpers.runtime import command_runtime
+from desloppify.app.commands.helpers.command_runtime import command_runtime
 from desloppify.app.commands.helpers.state import require_issue_inventory
 from desloppify.app.commands.next.render_support import CLUSTER_TYPE_LABELS
 from desloppify.base.output.terminal import colorize, print_table
