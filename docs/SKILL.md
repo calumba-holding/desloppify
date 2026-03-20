@@ -1,11 +1,10 @@
 ---
 name: desloppify
 description: >
-  Codebase health scanner and technical debt tracker. Use when the user asks
-  about code quality, technical debt, dead code, large files, god classes,
-  duplicate functions, code smells, naming issues, import cycles, or coupling
-  problems. Also use when asked for a health score, what to fix next, or to
-  create a cleanup plan. Supports 29 languages.
+  Multi-language codebase health scanner. Use when the user explicitly asks
+  to run desloppify, scan for technical debt, get a health score, or create
+  a cleanup plan. Do NOT trigger for general code review, renaming, or
+  fixing individual bugs.
 ---
 
 <!-- desloppify-begin -->
