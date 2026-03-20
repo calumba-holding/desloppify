@@ -30,6 +30,8 @@ desloppify scan --path .       # analyse the codebase
 desloppify status              # check scores — are we at target?
 ```
 
+After scanning, **always run `desloppify next`** — it tells you exactly what to do, in order. Don't interpret the scan output yourself or ask the user what to do. Just run `next` and follow its instructions.
+
 The scan will tell you if subjective dimensions need review. Follow its instructions. To trigger a review manually:
 ```bash
 desloppify review --prepare    # then follow your runner's review workflow
@@ -278,6 +280,6 @@ If the fix is unclear or the change needs discussion, open an issue at `https://
 
 `command -v desloppify >/dev/null 2>&1 && echo "desloppify: installed" || echo "NOT INSTALLED — run: uvx --from git+https://github.com/peteromallet/desloppify.git desloppify"`
 
-If `uvx` is not available: `pip install desloppify[full]`
+If `uvx` is not available: `pip install desloppify[full] && desloppify setup`
 
 <!-- desloppify-end -->
