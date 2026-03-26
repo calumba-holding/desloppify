@@ -488,18 +488,24 @@ def do_import_run(
                 f"Results directory does not exist: {results_dir}\n"
                 "  Did you run --run-batches or launch subagents to produce results first?"
             )
+            raise CommandError(hint, exit_code=1)
         elif len(missing) == len(selected):
             hint = (
                 f"No result files found in {results_dir}\n"
                 "  Each subagent must write its output to results/batch-N.raw.txt.\n"
                 "  Run --run-batches first, or launch subagents on the prompts/ files manually."
             )
+            raise CommandError(hint, exit_code=1)
+        elif allow_partial:
+            missing_set = {idx - 1 for idx in missing}
+            selected_indexes = [idx for idx in selected_indexes if idx not in missing_set]
+            output_files = {idx: output_files[idx] for idx in selected_indexes}
         else:
             hint = (
                 f"Missing result files in {results_dir}: batches {missing}\n"
                 "  Re-run the failed batches or use --allow-partial to import what succeeded."
             )
-        raise CommandError(hint, exit_code=1)
+            raise CommandError(hint, exit_code=1)
 
     batch_results, failures = collect_batch_results(
         request=review_batches_mod.CollectBatchResultsRequest(
