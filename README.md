@@ -53,6 +53,17 @@ Use `plan` / `plan queue` to reorder priorities or cluster related issues. Resca
 The scan output includes agent instructions — follow them, don't substitute your own analysis.
 ```
 
+## Monorepos and multi-project directories
+
+If your workspace contains multiple programs (e.g., a frontend and backend in sibling directories), scan each one separately with `--path`:
+
+```bash
+desloppify --lang typescript scan --path ./frontend
+desloppify --lang python scan --path ./backend
+```
+
+Scanning the parent directory that contains both will mix state and path context across unrelated codebases, producing unreliable results. Each `--path` target should be a single coherent project. Desloppify maintains separate state per language, so you can scan a TypeScript frontend and a Python backend from the same workspace without conflict — just target them individually.
+
 ## How it works
 
 ```
